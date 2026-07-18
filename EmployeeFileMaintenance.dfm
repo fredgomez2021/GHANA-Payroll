@@ -1,0 +1,725 @@
+object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
+  Left = 0
+  Top = 0
+  BorderStyle = bsToolWindow
+  Caption = 'Employee File Maintenance'
+  ClientHeight = 491
+  ClientWidth = 570
+  Color = clSkyBlue
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  FormStyle = fsMDIChild
+  OldCreateOrder = False
+  Position = poDesktopCenter
+  Visible = True
+  OnActivate = FormActivate
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnShow = FormShow
+  PixelsPerInch = 96
+  TextHeight = 13
+  object GroupBox1: TGroupBox
+    Left = 8
+    Top = 76
+    Width = 553
+    Height = 373
+    Caption = 'EMPLOYEE DETAILS'
+    Color = clCream
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Arial'
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+    TabOrder = 0
+    object Label2: TLabel
+      Left = 83
+      Top = 28
+      Width = 76
+      Height = 16
+      Caption = 'PIN/EDS No:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label1: TLabel
+      Left = 121
+      Top = 53
+      Width = 38
+      Height = 16
+      Caption = 'Name:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label4: TLabel
+      Left = 118
+      Top = 210
+      Width = 42
+      Height = 16
+      Caption = 'Status:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label5: TLabel
+      Left = 83
+      Top = 129
+      Width = 75
+      Height = 16
+      Caption = 'Job Position:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label6: TLabel
+      Left = 43
+      Top = 105
+      Width = 116
+      Height = 16
+      Caption = 'Project/Department:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label8: TLabel
+      Left = 28
+      Top = 238
+      Width = 130
+      Height = 16
+      Caption = 'ATM Account Number:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label10: TLabel
+      Left = 315
+      Top = 185
+      Width = 81
+      Height = 16
+      Caption = 'Monthly Rate:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label11: TLabel
+      Left = 75
+      Top = 185
+      Width = 84
+      Height = 16
+      Caption = 'Rate per Hour:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label15: TLabel
+      Left = 95
+      Top = 154
+      Width = 65
+      Height = 16
+      Caption = 'Date Hired:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label16: TLabel
+      Left = 106
+      Top = 79
+      Width = 53
+      Height = 16
+      Caption = 'Location:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label3: TLabel
+      Left = 121
+      Top = 288
+      Width = 37
+      Height = 16
+      Caption = 'Email:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label18: TLabel
+      Left = 307
+      Top = 154
+      Width = 89
+      Height = 16
+      Caption = 'Date Resigned:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      Visible = False
+    end
+    object Label19: TLabel
+      Left = 107
+      Top = 342
+      Width = 47
+      Height = 16
+      Caption = 'SS Tier:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label20: TLabel
+      Left = 48
+      Top = 263
+      Width = 110
+      Height = 16
+      Caption = 'ATM Card Number:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object txtEmployeePIN: TEdit
+      Left = 162
+      Top = 24
+      Width = 225
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      MaxLength = 5
+      ParentFont = False
+      TabOrder = 0
+    end
+    object txtEmployeeName: TEdit
+      Left = 162
+      Top = 50
+      Width = 361
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 1
+    end
+    object txtATMNumber: TEdit
+      Left = 162
+      Top = 234
+      Width = 174
+      Height = 24
+      Enabled = False
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 5
+    end
+    object cmbPrimary_Task_ID: TComboBox
+      Left = 162
+      Top = 101
+      Width = 286
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ItemHeight = 16
+      ParentFont = False
+      TabOrder = 6
+      Items.Strings = (
+        'Incentive Compensation Rate'
+        'Base Pay'
+        'Semi-Monthly')
+    end
+    object cmbJobPosition: TComboBox
+      Left = 162
+      Top = 126
+      Width = 286
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ItemHeight = 16
+      ParentFont = False
+      TabOrder = 2
+    end
+    object txtMonthlyRate: TEdit
+      Left = 400
+      Top = 182
+      Width = 123
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 3
+      Text = '0.00'
+      OnChange = txtMonthlyRateChange
+    end
+    object cmdViewList: TButton
+      Left = 390
+      Top = 22
+      Width = 133
+      Height = 25
+      Caption = 'View List'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 8
+      OnClick = cmdViewListClick
+    end
+    object txtRate_Hour: TEdit
+      Left = 162
+      Top = 182
+      Width = 126
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 4
+      Text = '0.00'
+      OnChange = txtMonthlyRateChange
+    end
+    object cmbEmp_Status: TComboBox
+      Left = 162
+      Top = 207
+      Width = 127
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ItemHeight = 16
+      ParentFont = False
+      TabOrder = 7
+    end
+    object dtpDate_Hired: TDateTimePicker
+      Left = 162
+      Top = 150
+      Width = 125
+      Height = 24
+      Date = 38730.954092893520000000
+      Time = 38730.954092893520000000
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 9
+    end
+    object cmbEmp_Loc: TComboBox
+      Left = 162
+      Top = 76
+      Width = 286
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ItemHeight = 16
+      ParentFont = False
+      TabOrder = 10
+    end
+    object chkIncludeInProcess: TCheckBox
+      Left = 162
+      Top = 314
+      Width = 141
+      Height = 17
+      HelpType = htKeyword
+      HelpKeyword = 'With Night Differential?'
+      Alignment = taLeftJustify
+      Caption = 'Include in Process'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 11
+    end
+    object btnAddPrimaryTask: TButton
+      Left = 449
+      Top = 100
+      Width = 74
+      Height = 23
+      Caption = 'Add Project'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 12
+      OnClick = btnAddPrimaryTaskClick
+    end
+    object btnAddPosition: TButton
+      Left = 449
+      Top = 125
+      Width = 74
+      Height = 23
+      Caption = 'Add Position'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 13
+      OnClick = btnAddPositionClick
+    end
+    object btnAddLocation: TButton
+      Left = 450
+      Top = 75
+      Width = 73
+      Height = 23
+      Caption = 'Add Location'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 14
+      OnClick = btnAddLocationClick
+    end
+    object txtEmail: TEdit
+      Left = 162
+      Top = 285
+      Width = 362
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 15
+    end
+    object dtpDate_Resigned: TDateTimePicker
+      Left = 401
+      Top = 150
+      Width = 125
+      Height = 24
+      Date = 38730.954092893520000000
+      Time = 38730.954092893520000000
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 16
+      Visible = False
+    end
+    object txtMP2EmpShare: TEdit
+      Left = 162
+      Top = 339
+      Width = 127
+      Height = 24
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 17
+      Text = '0.00'
+      OnChange = txtMonthlyRateChange
+    end
+    object txtATMCardNumber: TEdit
+      Left = 162
+      Top = 260
+      Width = 174
+      Height = 24
+      Enabled = False
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 18
+    end
+  end
+  object cmdDelete: TButton
+    Left = 160
+    Top = 459
+    Width = 75
+    Height = 25
+    Caption = '&DELETE'
+    Enabled = False
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Arial'
+    Font.Style = [fsBold]
+    ParentFont = False
+    TabOrder = 1
+    OnClick = cmdDeleteClick
+  end
+  object cmdEdit: TButton
+    Left = 84
+    Top = 459
+    Width = 76
+    Height = 25
+    Caption = '&EDIT'
+    Enabled = False
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Arial'
+    Font.Style = [fsBold]
+    ParentFont = False
+    TabOrder = 2
+    OnClick = cmdEditClick
+  end
+  object cmdAdd: TButton
+    Left = 9
+    Top = 459
+    Width = 75
+    Height = 25
+    Caption = '&ADD'
+    Enabled = False
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Arial'
+    Font.Style = [fsBold]
+    ParentFont = False
+    TabOrder = 3
+    OnClick = cmdAddClick
+  end
+  object GroupBox2: TGroupBox
+    Left = 7
+    Top = 4
+    Width = 554
+    Height = 71
+    Caption = 'CURRENT USER'
+    Color = clCream
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Arial'
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+    TabOrder = 4
+    object Label12: TLabel
+      Left = 33
+      Top = 22
+      Width = 56
+      Height = 14
+      Caption = 'User Name:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label13: TLabel
+      Left = 10
+      Top = 48
+      Width = 79
+      Height = 14
+      Caption = 'Employee Name:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label14: TLabel
+      Left = 222
+      Top = 22
+      Width = 60
+      Height = 14
+      Caption = 'Job Position:'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object txtUser: TEdit
+      Left = 93
+      Top = 18
+      Width = 124
+      Height = 22
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      ReadOnly = True
+      TabOrder = 0
+    end
+    object txtUser_EmployeeName: TEdit
+      Left = 93
+      Top = 43
+      Width = 452
+      Height = 22
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      ReadOnly = True
+      TabOrder = 1
+    end
+    object txtJobPosition: TEdit
+      Left = 287
+      Top = 18
+      Width = 258
+      Height = 22
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      ReadOnly = True
+      TabOrder = 2
+    end
+  end
+  object cmdClose: TButton
+    Left = 235
+    Top = 459
+    Width = 75
+    Height = 25
+    Caption = '&CANCEL'
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Arial'
+    Font.Style = [fsBold]
+    ParentFont = False
+    TabOrder = 5
+    OnClick = cmdCloseClick
+  end
+  object btnEmployeeList: TButton
+    Left = 425
+    Top = 458
+    Width = 135
+    Height = 25
+    Caption = 'Employee lists'
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'Arial'
+    Font.Style = [fsBold]
+    ParentFont = False
+    TabOrder = 6
+    OnClick = btnEmployeeListClick
+  end
+  object ADOConnection: TADOConnection
+    LoginPrompt = False
+    Provider = 'SQLOLEDB.1'
+    Left = 746
+    Top = 381
+  end
+  object ADODataSet: TADODataSet
+    Connection = ADOConnection
+    Parameters = <>
+    Left = 648
+    Top = 368
+  end
+  object dsCombo: TADODataSet
+    Connection = ADOConnection
+    Parameters = <>
+    Left = 680
+    Top = 368
+  end
+  object dsLogFile: TADODataSet
+    Connection = ADOConnection
+    Parameters = <>
+    Left = 712
+    Top = 336
+  end
+  object dsAccess: TADODataSet
+    Parameters = <>
+    Left = 648
+    Top = 336
+  end
+  object dsModule: TADODataSet
+    Parameters = <>
+    Left = 680
+    Top = 336
+  end
+  object ADODataSet1: TADODataSet
+    Connection = ADOConnection
+    Parameters = <>
+    Left = 648
+    Top = 400
+  end
+  object ADODataSet2: TADODataSet
+    Connection = ADOConnection
+    Parameters = <>
+    Left = 648
+    Top = 436
+  end
+end

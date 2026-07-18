@@ -1,0 +1,491 @@
+// Name:  TaskRemarksMaintenance.pas
+// Description:  This entry form is used for adding task IDs.
+//     Editing and deleting existing task IDs can also be done here.
+
+unit TaskRemarksMaintenance;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, DB, ADODB, TaskRemarks, CommonModule;
+
+type
+  TfrmTaskRemarksMaintenance = class(TForm)
+    GroupBox1: TGroupBox;
+    Label2: TLabel;
+    txtTaskID: TEdit;
+    Label3: TLabel;
+    txtTaskDesc: TEdit;
+    cmdViewTaskList: TButton;
+    txtFirstRate: TEdit;
+    txtMinValue: TEdit;
+    Label7: TLabel;
+    Label5: TLabel;
+    ADOConnection: TADOConnection;
+    ADODataSet: TADODataSet;
+    cmdDelete: TButton;
+    cmdEdit: TButton;
+    cmdAdd: TButton;
+    dsCombo: TADODataSet;
+    cmbSupervisor_PIN: TComboBox;
+    cmbTeamLeader_PIN: TComboBox;
+    dsLogFile: TADODataSet;
+    Label1: TLabel;
+    txtSecondMinValue: TEdit;
+    Label4: TLabel;
+    txtSecondRate: TEdit;
+    procedure FormActivate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormShow(Sender: TObject);
+    procedure cmbTeamLeaderSelect(Sender: TObject);
+    procedure cmbSupervisorSelect(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure cmdDeleteClick(Sender: TObject);
+    procedure cmdEditClick(Sender: TObject);
+    procedure cmdViewTaskListClick(Sender: TObject);
+    procedure cmdAddClick(Sender: TObject);
+    procedure cmdCloseClick(Sender: TObject);
+
+    procedure Load_Combo;
+    procedure Display_Data;
+    procedure Delete_Log( vTask_ID: String);
+    procedure Edit_Log;
+
+
+    procedure InsertToLogFile(vDate, vUser, vModule, vCommand, vTable, vPIN: String);
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmTaskRemarksMaintenance: TfrmTaskRemarksMaintenance;
+  varIdle : String;
+  varLen : Integer;
+  gUser : String;
+  gUser_ID : Integer;
+
+  sUserID : string;
+  sTranDate : string;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfrmTaskRemarksMaintenance.cmdCloseClick(Sender: TObject);
+begin
+  frmTaskRemarksMaintenance.Close;
+end;
+
+procedure TfrmTaskRemarksMaintenance.cmdAddClick(Sender: TObject);
+begin
+    if (txtTaskID.Text <> '') AND (txtTaskDesc.Text <> '') AND (txtFirstRate.Text <> '') then
+    begin
+        with ADODataSet do
+        begin
+            Close;
+            CommandText := 'SELECT * FROM dtaTaskRemarks WHERE Task_ID = ' + Chr(39) + txtTaskID.Text + Chr(39);
+            Open;
+
+            If RecordCount > 0 then
+                ShowMessage('Task ID already exists!  Please try another.')
+            else
+            begin
+            Insert;
+              FieldByName('Task_ID').AsString := txtTaskID.Text;
+              FieldByName('Task_Description').AsString := txtTaskDesc.Text;
+              FieldByName('Piece_Rate').AsString := txtFirstRate.Text;
+              {FieldByName('Revenue_Rate').AsString := txtRevenueRate.Text;
+              FieldByName('Supervisor').AsString := cmbSupervisor_PIN.Text;
+              FieldByName('Team_Leader').AsString := cmbTeamLeader_PIN.Text;
+              FieldByName('TimeDiff').AsString := txtTimeDiff.Text;}
+            Post;
+
+            ShowMessage('New task code was successfully added!');
+
+            Close;
+
+            end;
+            txtTaskID.Clear;
+            txtTaskDesc.Clear;
+            txtFirstRate.Clear;
+{            txtRevenueRate.Clear;
+            cmbSupervisor.Text := '';
+            cmbSupervisor_PIN.Text := '';
+            cmbTeamLeader.Text := '';
+            cmbTeamLeader_PIN.Text := '';
+            txtTimeDiff.Clear;}
+
+            txtTaskID.SetFocus;
+          end;
+    end
+    else
+          ShowMessage('Please verify your inputs!');
+end;
+
+procedure TfrmTaskRemarksMaintenance.cmdViewTaskListClick(Sender: TObject);
+begin
+  with TfrmTaskRemarks.Create(Application) do show;
+  //frmTaskRemarks.Show;
+end;
+
+procedure TfrmTaskRemarksMaintenance.cmdEditClick(Sender: TObject);
+var
+  count : integer;
+begin
+  if cmdEdit.Caption = '&EDIT' then
+  begin
+
+      varIdle := InputBox('Task Remarks', 'Enter Task ID',' ');
+
+      varLen := StrLen(PChar(varIdle));
+
+      if varLen >= 1 then
+      begin
+
+      with ADODataSet do
+      begin
+          Close;
+          CommandText := 'SELECT * FROM dtaTaskRemarks WHERE Task_ID = ' + Chr(39) + varIdle + Chr(39);
+          Open;
+
+          //ShowMessage(IntToStr(RecordCount));
+          if RecordCount > 0 then
+          begin
+            cmdEdit.Caption := '&SAVE';
+            cmdAdd.Enabled := FALSE;
+            cmdDelete.Enabled := FALSE;
+            txtTaskID.Enabled := FALSE;
+
+            Display_Data;
+            //txtTaskID.SetFocus;
+
+          end
+          else
+            ShowMessage('No task ID found in our database!');
+//          Close;
+      end;
+      end
+      else
+        ShowMessage('Please key in a valid task id!');
+  end
+  else
+  begin
+      cmdEdit.Caption := '&EDIT';
+      cmdAdd.Enabled := TRUE;
+      cmdDelete.Enabled := TRUE;
+      txtTaskID.Enabled := TRUE;
+
+      with ADODataSet do
+      begin
+
+          Edit_Log;
+
+          Edit;
+//            FieldByName('Task_ID').AsString := txtTaskID.Text;
+            FieldByName('Task_Description').AsString := txtTaskDesc.Text;
+            {FieldByName('Piece_Rate').AsString := txtPieceRate.Text;
+            FieldByName('Revenue_Rate').AsString := txtRevenueRate.Text;
+            FieldByName('Supervisor').AsString := cmbSupervisor_PIN.Text;
+            FieldByName('Team_Leader').AsString := cmbTeamLeader_PIN.Text;
+            FieldByName('TimeDiff').AsString := txtTimeDiff.Text;}
+          Post;
+
+          ShowMessage('Record was successfully updated!');
+
+          txtTaskID.Clear;
+          txtTaskDesc.Clear;
+          {txtPieceRate.Clear;
+          txtRevenueRate.Clear;
+          cmbSupervisor.Text := '';
+          //cmbSupervisor_PIN.Text := '';
+          cmbTeamLeader.Text := '';
+          //cmbTeamLeader_PIN.Text := '';
+          txtTimeDiff.Clear;}
+
+      Close;
+      end;
+  end;
+end;
+
+procedure TfrmTaskRemarksMaintenance.cmdDeleteClick(Sender: TObject);
+var
+  varStr : String;
+begin
+      varIdle := InputBox('Task Remarks', 'Enter Task ID',' ');
+
+      varLen := StrLen(PChar(varIdle));
+
+      if varLen > 1 then
+      begin
+      with ADODataSet do
+      begin
+        Close;
+        CommandText := 'SELECT * FROM dtaTaskRemarks WHERE Task_ID = ' + Chr(39) + varIdle + Chr(39);
+        Open;
+
+        if RecordCount > 0 then
+        begin
+          Display_Data;
+
+        if MessageDlg('Delete task remark?', mtConfirmation, mbYesNo, 0) = mrYes then
+          with ADOConnection do
+          begin
+
+            Delete_Log( varIdle );
+
+            Execute('DELETE FROM dtaTaskRemarks WHERE Task_ID = ' + Chr(39) + varIdle + Chr(39));
+
+            txtTaskID.Clear;
+            txtTaskDesc.Clear;
+            {txtPieceRate.Clear;
+            txtRevenueRate.Clear;
+            cmbSupervisor.Text := '';
+            //cmbSupervisor_PIN.Text := '';
+            cmbTeamLeader.Text := '';
+            //cmbTeamLeader_PIN.Text := '';
+            txtTimeDiff.Clear;}
+
+            ShowMessage('Record was successfully deleted!');
+          end;
+        end
+        else
+          ShowMessage ('No Task ID found in our database!');
+        Close;
+      end;
+    end
+    else
+      ShowMessage('Please key in a valid Task ID!');
+end;
+
+
+procedure TfrmTaskRemarksMaintenance.FormCreate(Sender: TObject);
+begin
+  ADOConnection.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+  ADOConnection.Connected := TRUE;
+end;
+
+
+procedure TfrmTaskRemarksMaintenance.cmbSupervisorSelect(Sender: TObject);
+begin
+  //cmbSupervisor_PIN.ItemIndex := cmbSupervisor.ItemIndex;
+end;
+
+procedure TfrmTaskRemarksMaintenance.cmbTeamLeaderSelect(Sender: TObject);
+begin
+//  cmbTeamLeader_PIN.ItemIndex := cmbTeamLeader.ItemIndex;
+end;
+
+procedure TfrmTaskRemarksMaintenance.Load_Combo;
+begin
+  {dsCombo.Close;
+  dsCombo.CommandText := 'SELECT * FROM dtaEmployees WHERE Job_Position_Code=' + chr(39) + 'SUP' + chr(39) + ' ORDER BY Employee_Name';
+  dsCombo.Active := TRUE;
+
+  cmbSupervisor.Items.Clear;
+  cmbSupervisor_PIN.Items.Clear;
+  if dsCombo.RecordCount > 0 then
+  begin
+    dsCombo.First;
+    while not dsCombo.Eof do
+    begin
+      cmbSupervisor.Items.Add(dsCombo.FieldByName('Employee_Name').AsString);
+      cmbSupervisor_PIN.Items.Add(dsCombo.FieldByName('Employee_PIN').AsString);
+      dsCombo.Next;
+    end;
+  end;
+
+  dsCombo.Close;
+  dsCombo.CommandText := 'SELECT * FROM dtaEmployees WHERE Job_Position_Code=' + chr(39) + 'TL' + chr(39) + ' ORDER BY Employee_Name';
+  dsCombo.Active := TRUE;
+
+  cmbTeamLeader.Items.Clear;
+  cmbTeamLeader_PIN.Items.Clear;
+  if dsCombo.RecordCount > 0 then
+  begin
+    dsCombo.First;
+    while not dsCombo.Eof do
+    begin
+      cmbTeamLeader.Items.Add(dsCombo.FieldByName('Employee_Name').AsString);
+      cmbTeamLeader_PIN.Items.Add(dsCombo.FieldByName('Employee_PIN').AsString);
+      dsCombo.Next;
+    end;
+  end; }
+end;
+
+procedure TfrmTaskRemarksMaintenance.Display_Data;
+var
+  count : integer;
+begin
+    with ADODataSet do
+    begin
+            txtTaskID.Text := FieldByName('Task_ID').AsString;
+            txtTaskDesc.Text := FieldByName('Task_Description').AsString;
+            //txtPieceRate.Text := FieldByName('Piece_Rate').AsString;
+            //txtRevenueRate.Text := FieldByName('Revenue_Rate').AsString;
+
+            Load_Combo;
+
+            {for count := 1 to cmbSupervisor_PIN.Items.Count do
+            begin
+              cmbSupervisor_PIN.ItemIndex := count-1;
+              if cmbSupervisor_PIN.Text = FieldByName('Supervisor').AsString then
+              begin
+                cmbSupervisor.ItemIndex := count-1;
+                break;
+              end;
+            end;
+            cmbSupervisor.Refresh;
+
+            for count := 1 to cmbTeamLeader_PIN.Items.Count do
+            begin
+              cmbTeamLeader_PIN.ItemIndex := count-1;
+              if cmbTeamLeader_PIN.Text = FieldByName('Team_Leader').AsString then
+              begin
+                cmbTeamLeader.ItemIndex := count-1;
+                break;
+              end;
+            end;
+            cmbTeamLeader.Refresh;
+
+            txtTimeDiff.Text := FieldByName('TimeDiff').AsString;  }
+    end;
+end;
+
+procedure TfrmTaskRemarksMaintenance.Delete_Log( vTask_ID : String);
+var
+  SQL: String;
+begin
+  SQL :=       'INSERT INTO dtaLogFile ' ;
+  SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, Prev_Value ) ' ;
+  SQL := SQL + 'VALUES ';
+  SQL := SQL + '( ';
+  SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+  SQL := SQL + IntToStr(gUser_ID) + ', ';
+  SQL := SQL + chr(39) + 'Task-ID Maintanance' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'Delete' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'dtaTaskRemarks' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'Task_ID' + chr(39) + ', ';
+  SQL := SQL + chr(39) + vTask_ID + chr(39);
+  SQL := SQL + ')';
+  ADOConnection.Execute(SQL);
+end;
+
+procedure TfrmTaskRemarksMaintenance.Edit_Log;
+var
+  SQL: String;
+begin
+
+  with ADODataSet do begin
+
+//            FieldByName('Task_ID').AsString := txtTaskID.Text;
+
+    if( FieldByName('Task_Description').AsString <> txtTaskDesc.Text ) then
+    begin
+      SQL :=       'INSERT INTO dtaLogFile ' ;
+      SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value ) ' ;
+      SQL := SQL + 'VALUES ';
+      SQL := SQL + '( ';
+      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+      SQL := SQL + IntToStr(gUser_ID) + ', ';
+      SQL := SQL + chr(39) + 'Task-ID Maintanance' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'dtaTaskRemarks' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Task_Description' + chr(39) + ', ';
+      SQL := SQL + chr(39) + FieldByName('Task_Description').AsString + chr(39) + ', ';
+      SQL := SQL + chr(39) + txtTaskDesc.Text + chr(39);
+      SQL := SQL + ')';
+      ADOConnection.Execute(SQL);
+    end;
+
+    if( FieldByName('Piece_Rate').AsString <> txtFirstRate.Text ) then
+    begin
+      SQL :=       'INSERT INTO dtaLogFile ' ;
+      SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value ) ' ;
+      SQL := SQL + 'VALUES ';
+      SQL := SQL + '( ';
+      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+      SQL := SQL + IntToStr(gUser_ID) + ', ';
+      SQL := SQL + chr(39) + 'Task-ID Maintanance' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'dtaTaskRemarks' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Piece_Rate' + chr(39) + ', ';
+      SQL := SQL + chr(39) + FieldByName('Piece_Rate').AsString + chr(39) + ', ';
+      SQL := SQL + chr(39) + txtFirstRate.Text + chr(39);
+      SQL := SQL + ')';
+      ADOConnection.Execute(SQL);
+    end;
+
+  end;
+end;
+
+procedure TfrmTaskRemarksMaintenance.FormShow(Sender: TObject);
+begin
+  {gUser := ActiveUserName;         // this is only temporary and must be modified by using the actual user who logged in
+  gUser_ID := StrToInt(ActiveUserID);
+
+  if gUser <> 'Admin' then
+  begin
+      ShowMessage('Only Admin user is allowed!!');
+
+      cmdAdd.Enabled := FALSE;
+      cmdEdit.Enabled := FALSE;
+      cmdDelete.Enabled := FALSE;
+  end
+  else
+  begin }
+      cmdAdd.Enabled := TRUE;
+      cmdEdit.Enabled := TRUE;
+      cmdDelete.Enabled := TRUE;
+  //end;
+
+end;
+
+procedure TfrmTaskRemarksMaintenance.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  Action := caFree;
+end;
+
+procedure TfrmTaskRemarksMaintenance.FormActivate(Sender: TObject);
+begin
+
+  gUser := ActiveUserName;  // this is only temporary and must be modified
+  gUser_ID := StrToInt(ActiveUserID);    // this is only temporary
+
+  sTranDate := DateToStr(Now) + ' ' + TimeToStr(Now);
+  sUserID := IntToStr(gUser_ID);
+
+
+
+  InsertToLogFile(sTranDate, sUserID, 'Task ID Maintenance', 'Load', 'dtaTaskRemarks', '');
+
+end;
+
+procedure TfrmTaskRemarksMaintenance.InsertToLogFile(vDate, vUser, vModule, vCommand, vTable, vPIN: String);
+begin
+
+  dsLogFile.Close;
+  dsLogFile.CommandText := 'SELECT * FROM dtaLogFile';
+  dsLogFile.Active := TRUE;
+
+  with dsLogFile do
+  begin
+    Insert;
+      FieldByName('Tran_Date').AsString := vDate;
+      FieldByName('User_Id').AsString := vUser;
+      FieldByName('Module_Desc').AsString := vModule;
+      FieldByName('Command').AsString := vCommand;
+      FieldByName('Table_Name').AsString := vTable;
+      FieldByName('Employee_PIN').AsString := vPIN;
+      FieldByName('Remarks').AsString := 'Module log';
+
+    Post;
+
+  end;
+end;
+
+end.

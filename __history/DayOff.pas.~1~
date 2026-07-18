@@ -1,0 +1,667 @@
+// Name:  DayOff.pas
+// Description:  This is used for the entry of employees' dayoff
+//     during a given payroll period.  A day-off pay will be given
+//     to those employees who worked on their day-off.
+
+unit DayOff;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, Grids, DBGrids, StdCtrls, ComCtrls, DB, ADODB, CommonModule,
+  DateUtils, ShellAPI, ExtractionDayOff;
+
+type
+  TfrmDayOff = class(TForm)
+    GroupBox2: TGroupBox;
+    Label8: TLabel;
+    Label9: TLabel;
+    txtUser: TEdit;
+    txtUser_EmployeeName: TEdit;
+    GroupBox1: TGroupBox;
+    Label6: TLabel;
+    cmbPrimaryTaskID: TComboBox;
+    DBGrid1: TDBGrid;
+    cmdAdd: TButton;
+    cmdEdit: TButton;
+    cmdDelete: TButton;
+    cmdSave: TButton;
+    cmdCancel: TButton;
+    GroupBox3: TGroupBox;
+    cmbEmp_Name: TComboBox;
+    Label4: TLabel;
+    Label3: TLabel;
+    txtRemarks: TEdit;
+    ADODataSet6: TADODataSet;
+    ADODataSet5: TADODataSet;
+    ADODataSet4: TADODataSet;
+    ADODataSet3: TADODataSet;
+    ADOTable1: TADOTable;
+    ADODataSet1: TADODataSet;
+    ADODataSet2: TADODataSet;
+    DataSource1: TDataSource;
+    ADOConnection1: TADOConnection;
+    lblMode: TLabel;
+    txtEmp_PIN: TEdit;
+    Label7: TLabel;
+    DBGrid2: TDBGrid;
+    dtDate: TDateTimePicker;
+    DataSource2: TDataSource;
+    Label2: TLabel;
+    txtJobPosition: TEdit;
+    btnLoadExtraction: TButton;
+    dsLogFile: TADODataSet;
+    procedure btnLoadExtractionClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure DBGrid2KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure DBGrid2CellClick(Column: TColumn);
+    procedure cmbEmp_NameClick(Sender: TObject);
+    procedure cmdDeleteClick(Sender: TObject);
+    procedure cmdEditClick(Sender: TObject);
+    procedure DBGrid1KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure DBGrid1CellClick(Column: TColumn);
+    procedure dtDateChange(Sender: TObject);
+    procedure cmbPrimaryTaskIDChange(Sender: TObject);
+    procedure cmdSaveClick(Sender: TObject);
+    procedure cmdCancelClick(Sender: TObject);
+    procedure cmdAddClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure cmdExitClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure Load_Grid;
+    procedure Load_Grid2;
+    procedure Load_IdleCode;
+    procedure Load_Emp_Name;
+    procedure Load_Data_Fields;
+    procedure Load_Data_Fields2;
+    procedure Enable_Buttons(bEnable: Boolean; sMode: String);
+    function GetNumbersOnly( InputString:String ) : String;
+    procedure Add_Log;
+    procedure Edit_Log;
+    procedure Delete_Log;
+
+    procedure InsertToLogFile(vDate, vUser, vModule, vCommand, vTable, vPIN: String);
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmDayOff: TfrmDayOff;
+  varKeyer : String;
+  varLen : Integer;
+  varEditEmp_Name, varEditTaskID : String;
+  gUser : String;
+  gUser_ID : Integer;
+  vEmpID : String;
+
+  sUserID : string;
+  sTranDate : string;
+
+
+  vID : String;
+implementation
+
+{$R *.dfm}
+
+procedure TfrmDayOff.FormCreate(Sender: TObject);
+begin
+  ADOConnection1.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+  ADOConnection1.Connected := TRUE;
+end;
+
+procedure TfrmDayOff.cmdExitClick(Sender: TObject);
+begin
+  frmDayOff.Close;
+end;
+
+procedure TfrmDayOff.InsertToLogFile(vDate, vUser, vModule, vCommand, vTable, vPIN: String);
+begin
+
+  dsLogFile.Close;
+  dsLogFile.CommandText := 'SELECT * FROM dtaLogFile';
+  dsLogFile.Active := TRUE;
+
+  with dsLogFile do
+  begin
+    Insert;
+      FieldByName('Tran_Date').AsString := vDate;
+      FieldByName('User_Id').AsString := vUser;
+      FieldByName('Module_Desc').AsString := vModule;
+      FieldByName('Command').AsString := vCommand;
+      FieldByName('Table_Name').AsString := vTable;
+      FieldByName('Employee_PIN').AsString := vPIN;
+      FieldByName('Remarks').AsString := 'Module log';
+
+    Post;
+
+  end;
+end;
+
+procedure TfrmDayOff.FormActivate(Sender: TObject);
+begin
+
+  if ADOConnection1.Connected = true then
+    ADOConnection1.Close;
+
+  ADOConnection1.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+  ADOConnection1.Connected := TRUE;
+
+
+  dtDate.Date := Date();
+  txtRemarks.Text := LongDayNames[DayOfWeek(dtDate.Date)];
+
+  gUser := ActiveUserName;  // this is only temporary and must be modified
+  gUser_ID := StrToInt(ActiveUserID);    // this is only temporary
+
+  sTranDate := DateToStr(Now) + ' ' + TimeToStr(Now);
+  sUserID := IntToStr(gUser_ID);
+
+
+  With ADODataSet2 do
+  begin
+    Close;
+    CommandText := 'SELECT * FROM vwUsers WHERE UserName=' + chr(39) + gUser + chr(39);
+    Open;
+    if RecordCount = 1 then begin
+      txtUser.Text := gUser;
+      txtUser_EmployeeName.Text := FieldByName('Employee_Name').AsString;
+      txtJobPosition.Text := FieldByName('Job_Position_Code').AsString;
+      end
+    else begin
+      ShowMessage('Multiple user found for this username [' + gUser + ']');
+      //Halt(0);
+      end;
+    Close;
+  end;
+  cmdSave.Enabled := FALSE;
+  cmdCancel.Enabled := FALSE;
+  // check the current user if supervisor or team leader
+  if not ((txtJobPosition.Text='SUP') or (txtJobPosition.Text='TL') or (txtJobPosition.Text ='PRODMGR')) then begin
+    ShowMessage('Only Supervisor and Team-Leader is allowed..');
+    //frmDayOff.DoExit;
+    cmdAdd.Enabled := FALSE;
+    cmdEdit.Enabled := FALSE;
+    cmdDelete.Enabled := FALSE;
+  end;
+
+  //populate task id combo box with its corresponding
+  cmbPrimaryTaskID.Clear;
+  With ADODataSet2 do
+  begin
+    Close;
+    CommandText := 'SELECT * FROM dtaSupervisor_Task WHERE Employee_PIN = '+IntToStr(gUser_ID) + ' ORDER by Task_ID';
+    Open;
+    if RecordCount > 0 then
+    begin
+      First;
+      While Not eof do
+      begin
+        cmbPrimaryTaskID.AddItem(FieldByName('Task_ID').AsString, cmbPrimaryTaskID);
+        Next;
+      end;
+      cmbPrimaryTaskID.ItemIndex := 0;
+      cmbPrimaryTaskID.Refresh;
+    end;
+    Close;
+  end;
+
+  Load_Grid;
+
+  // initialize everything
+  //txtEmployeePIN.Text := '';
+  //txtEmployeeNAME.Text := '';
+  //txtPrimary_Task_ID.Text := '';
+  //txtKeyerID.Text := '';
+  //cmbTaskID.Clear;
+  //txtTaskDesc.Text := '';
+  //txtPieceRate.Text := '';
+  //cmdAdd.Caption := '&ADD';
+  //cmdEdit.Caption := '&EDIT';
+  //cmdDelete.Caption := '&DELETE';
+  //cmdClose.Caption := '&CLOSE';
+  //cmdAdd.Enabled := true;
+  //cmdEdit.Enabled := true;
+  //cmdDelete.Enabled := true;
+  //cmdClose.Enabled := true;
+
+  InsertToLogFile(sTranDate, sUserID, 'Day off Entry', 'Load', 'dtaDayOff', '');
+
+end;
+
+procedure TfrmDayOff.cmdAddClick(Sender: TObject);
+begin
+  // Initialize
+  Load_Emp_Name;
+  Load_IdleCode;
+//  txtIdleTime.Text := '';
+  txtRemarks.Text := LongDayNames[DayOfWeek(dtDate.Date)];
+  Enable_Buttons(TRUE,'ADD');
+end;
+
+procedure TfrmDayOff.Load_Grid;
+begin
+  ADODataSet1.Close;
+  ADODataSet1.CommandText := 'SELECT DISTINCT d.Employee_PIN, e.Employee_Name FROM dtaDayOff d LEFT OUTER JOIN dtaEmployees e on d.employee_pin=e.employee_pin ORDER BY e.Employee_Name';
+  ADODataSet1.Open;
+  DataSource1.DataSet := ADODataSet1;
+  DBGrid1.DataSource := DataSource1;
+  DBGrid1.Refresh;
+
+  // get the first record from dbgrid1 and display the grid 2
+  Load_Grid2;
+
+//  frmDayOff.Refresh;
+end;
+
+procedure TfrmDayOff.Load_Grid2;
+begin
+  ADODataSet3.Close;
+  ADODataSet3.CommandText := 'SELECT d.ID,d.Day_Off,d.Processed from dtaDayOff d WHERE d.employee_pin = ' + AdoDataSet1.FieldByName('Employee_Pin').AsString + ' ORDER BY d.Day_Off desc';
+  ADODataSet3.Open;
+  DataSource2.DataSet := ADODataSet3;
+  DBGrid2.DataSource := DataSource2;
+  DBGrid2.Refresh;
+
+//  frmDayOff.Refresh;
+end;
+
+procedure TfrmDayOff.Load_IdleCode;
+begin
+  //populate idle code
+//  cmbIdleCode.Clear;
+  With ADODataSet2 do
+  begin
+    Close;
+    CommandText := 'SELECT Code FROM dtaCodeTables WHERE Code_Category=''Idle_Code'' ORDER BY Code';
+    Open;
+    if RecordCount > 0 then
+    begin
+      First;
+      While Not eof do
+      begin
+//        cmbIdleCode.AddItem(FieldByName('Code').AsString, cmbIdleCode);
+        Next;
+      end;
+//      cmbIdleCode.ItemIndex := 0;
+//      cmbIdleCode.Refresh;
+    end;
+    Close;
+  end;
+end;
+
+procedure TfrmDayOff.Load_Emp_Name;
+begin
+  //populate keyer_id with its corresponding task id
+  cmbEmp_Name.Clear;
+  With ADODataSet2 do
+  begin
+    Close;
+    //CommandText := 'SELECT Keyer_ID FROM dtaKeyerRemarks WHERE Task_ID = '''+ cmbPrimaryTaskID.Text + ''' ORDER BY KEYER_ID';
+    CommandText := 'SELECT Employee_Name,Employee_PIN FROM dtaEmployees WHERE Primary_Task_ID = '''+ cmbPrimaryTaskID.Text + ''' ORDER BY Employee_Name';
+    Open;
+    if RecordCount > 0 then
+    begin
+      First;
+      txtemp_pin.Text := FieldByName('Employee_PIN').AsString;
+      While Not eof do
+      begin
+        cmbEmp_Name.AddItem(FieldByName('Employee_Name').AsString, cmbEmp_Name);
+        Next;
+      end;
+      cmbEmp_Name.ItemIndex := 0;
+      cmbEmp_Name.Refresh;
+    end;
+    Close;
+  end;
+end;
+
+procedure TfrmDayOff.Enable_Buttons( bEnable: Boolean; sMode: String);
+begin
+  lblMode.Caption := 'Mode: ' + sMode;
+  cmdAdd.Enabled := not bEnable;
+  cmdEdit.Enabled := not bEnable;
+  cmdDelete.Enabled := not bEnable;
+  cmdSave.Enabled := bEnable;
+  cmdCancel.Enabled := bEnable;
+
+  cmbEmp_Name.Enabled := bEnable;
+  dtDate.Enabled := bEnable;
+  txtRemarks.Enabled := FALSE;
+
+  cmbPrimaryTaskID.Enabled := not bEnable;
+  //cmdExit.Enabled := not bEnable;
+
+  DBGrid1.Enabled := not bEnable;
+end;
+
+procedure TfrmDayOff.cmdCancelClick(Sender: TObject);
+begin
+  Enable_Buttons(FALSE,'');
+end;
+
+procedure TfrmDayOff.cmdSaveClick(Sender: TObject);
+var
+  vSQL: String;
+begin
+  // initial field checking
+  if trim(cmbEmp_Name.Text) = '' then
+  begin
+    ShowMessage('Specify Employee Name!');
+    cmbEmp_Name.SetFocus;
+    exit;
+  end;
+
+  // check mode
+  if lblMode.Caption = 'Mode: ADD' then
+  begin
+
+    // check for duplicate //
+    With ADODataSet2 do
+    begin
+      Close;
+      CommandText := 'SELECT * FROM dtaDayOff WHERE Employee_PIN='+txtEmp_PIN.Text+' AND Day_Off='''+DateToStr(dtDate.Date)+'''';
+      Open;
+      if RecordCount > 0 then
+      begin
+        ShowMessage('Record already exist, cannot save..');
+        Close;
+        Exit;
+      end;
+      Close;
+    end;
+    // save record
+    if (Messagedlg('Save this record?', mtConfirmation ,[mbNo,mbYes],0) = mrYes) then
+    begin
+      vSQL := '';
+      vSQL := vSQL + 'INSERT INTO dtaDayOff (Employee_PIN, Day_Off) VALUES ';
+      vSQL := vSQL + '('+ txtEmp_PIN.Text + ', '''+ DateToStr(dtDate.Date) + ''' )' ;
+      //ShowMessage(vSQL);
+      ADOConnection1.Execute(vSQL);
+
+      Add_Log;
+
+    end
+  end;
+
+  if lblMode.Caption = 'Mode: EDIT' then
+  begin
+    // check for duplicate //
+    With ADODataSet2 do
+    begin
+      Close;
+      CommandText := 'SELECT * FROM dtaDayOff WHERE Employee_PIN='+txtEmp_PIN.Text+' AND Day_Off='''+DateToStr(dtDate.Date)+'''';
+      Open;
+      if RecordCount > 0 then
+        if vID<>FieldByName('ID').AsString then
+        begin
+          ShowMessage('(EDIT) Record already exist, can not save..');
+          Close;
+          Exit;
+        end;
+      Close;
+    end;
+    if (Messagedlg('Save this record?', mtConfirmation ,[mbNo,mbYes],0) = mrYes) then
+    begin
+
+      Edit_Log;
+
+      vSQL := '';
+      vSQL := vSQL + 'Update dtaDayOff SET ';
+      vSQL := vSQL + 'Employee_PIN  = ' + txtEmp_PIN.Text + ', ';
+      vSQL := vSQL + 'Day_Off = '''+ DateToStr(dtDate.Date) + ''' ';
+      vSQL := vSQL + 'Where ID=' + vID;
+      //ShowMessage(vSQL);
+      ADOConnection1.Execute(vSQL);
+    end
+  end;
+
+  ShowMessage('Record saved successfully..');
+  Load_Grid;
+  Enable_Buttons(FALSE,'');
+end;
+
+function TfrmDayOff.GetNumbersOnly( InputString:String ) : String;
+var
+  cnt : Integer;
+  sTemp : String;
+begin
+  sTemp := '';
+  for cnt:=1 to length(InputString) do
+  begin
+    if Pos( Copy(InputString,cnt,1) , '0123456789' ) > 0 then
+      sTemp := sTemp + Copy(InputString,cnt,1);
+  end;
+  GetNumbersOnly := sTemp;
+end;
+
+procedure TfrmDayOff.cmbPrimaryTaskIDChange(Sender: TObject);
+begin
+  Load_Grid;
+end;
+
+procedure TfrmDayOff.dtDateChange(Sender: TObject);
+begin
+  txtRemarks.Text := LongDayNames[DayOfWeek(dtDate.Date)];
+  Load_Grid;
+end;
+
+procedure TfrmDayOff.Load_Data_Fields;
+begin
+  // load edit fields
+  cmbEmp_Name.Clear;
+  cmbEmp_Name.AddItem(ADODataSet1.FieldbyName('Employee_Name').AsString,cmbEmp_Name);
+  cmbEmp_Name.ItemIndex := 0;
+  cmbEmp_Name.Refresh;
+  txtEmp_PIN.Text := ADODataSet1.FieldbyName('Employee_PIN').AsString;
+  Load_Grid2;
+  vID := ADODataSet3.FieldByName('ID').AsString;
+  dtDate.Date := ADODataSet3.FieldByName('Day_Off').Value;
+  txtRemarks.Text := LongDayNames[DayOfWeek(dtDate.Date)];
+end;
+
+procedure TfrmDayOff.DBGrid1CellClick(Column: TColumn);
+begin
+  Load_Data_Fields;
+end;
+
+procedure TfrmDayOff.DBGrid1KeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  Load_Data_Fields;
+end;
+
+procedure TfrmDayOff.cmdEditClick(Sender: TObject);
+var
+  vKeyer, vIdleCode : String;
+  i : integer;
+begin
+  if ADODataSet3.FieldByName('Processed').AsString = 'Y' then
+  begin
+    ShowMessage('Editing is not allowed, record has been processed..');
+    Exit;
+  end;
+  if trim(txtEmp_PIN.Text) = '' then Exit;
+  vKeyer := trim(cmbEmp_Name.Text);
+//  vIdleCode := trim(cmbIdleCode.Text);
+  Load_Emp_Name;
+  // for vkeyer in cmbkeyerid
+  for i:=0 to cmbEmp_Name.Items.Count-1 do
+  begin
+    cmbEmp_Name.ItemIndex := i;
+    cmbEmp_Name.Refresh;
+    if trim(cmbEmp_Name.Text)=trim(vKeyer) then break;
+  end;
+  Enable_Buttons(TRUE,'EDIT');
+end;
+
+procedure TfrmDayOff.cmdDeleteClick(Sender: TObject);
+var
+  vKeyer, vIdleCode, vSQL : String;
+  i : integer;
+begin
+  if ADODataSet3.FieldByName('Processed').AsString = 'Y' then
+  begin
+    ShowMessage('Deleting is not allowed, record has been processed..');
+    Exit;
+  end;
+  if trim(txtEmp_PIN.Text) = '' then Exit;
+  if (Messagedlg('Delete this record?', mtConfirmation ,[mbNo,mbYes],0) = mrYes) then
+  begin
+      Delete_Log;
+
+      vSQL := '';
+      vSQL := vSQL + 'Delete From dtaDayOff ';
+      vSQL := vSQL + 'Where ID=' + vID;
+      txtEmp_PIN.Text := '';
+      //ShowMessage(vSQL);
+      ADOConnection1.Execute(vSQL);
+      Load_Grid;
+      ShowMessage('Record successfully deleted...');
+  end;
+end;
+
+procedure TfrmDayOff.Add_Log;
+var
+  ID: String;
+  SQL: String;
+begin
+  with ADODataSet2 do begin
+    Close;
+    CommandText := 'SELECT * FROM dtaDayOff WHERE Employee_PIN='+txtEmp_PIN.Text+' AND Day_Off='''+DateToStr(dtDate.Date)+'''';
+    Open;
+    ID:='0';
+    if RecordCount > 0 then ID:=FieldByName('ID').AsString;
+    Close;
+  end;
+  SQL :=       'INSERT INTO dtaLogFile ' ;
+  SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, New_Value, Employee_PIN, ID, Remarks ) ' ;
+  SQL := SQL + 'VALUES ';
+  SQL := SQL + '( ';
+  SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+  SQL := SQL + IntToStr(gUser_ID) + ', ';
+  SQL := SQL + chr(39) + 'Day-off Entry' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'Add' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'dtaDayOff' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'Employee_PIN' + chr(39) + ', ';
+  SQL := SQL + chr(39) + txtEmp_PIN.Text + chr(39) + ', ';
+  SQL := SQL + chr(39) + txtEmp_PIN.Text + chr(39) + ', ';
+  SQL := SQL + ID + ', ';
+  SQL := SQL + chr(39) + txtEMP_PIN.Text + '|' + DateToStr(dtDate.Date) + chr(39) ;
+  SQL := SQL + ')';
+  ADOConnection1.Execute(SQL);
+end;
+
+procedure TfrmDayOff.Edit_Log;
+var
+  SQL: String;
+begin
+
+    if( ADODataSet1.FieldByName('Employee_PIN').AsString <> txtEmp_PIN.Text ) then
+    begin
+      SQL :=       'INSERT INTO dtaLogFile ' ;
+      SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value, ID, Employee_PIN ) ' ;
+      SQL := SQL + 'VALUES ';
+      SQL := SQL + '( ';
+      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+      SQL := SQL + IntToStr(gUser_ID) + ', ';
+      SQL := SQL + chr(39) + 'Day-off Entry' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'dtaDayOff' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Employee_PIN' + chr(39) + ', ';
+      SQL := SQL + chr(39) + ADODataSet1.FieldByName('Employee_PIN').AsString + chr(39) + ', ';
+      SQL := SQL + chr(39) + txtEmp_PIN.Text + chr(39) + ', ';
+      SQL := SQL + ADODataSet3.FieldByName('ID').AsString + ', ';
+      SQL := SQL + ADODataSet1.FieldByName('Employee_PIN').AsString;
+      SQL := SQL + ')';
+      ADOConnection1.Execute(SQL);
+    end;
+
+    if( ADODataSet3.FieldByName('Day_Off').Value <> dtDate.Date ) then
+    begin
+      SQL :=       'INSERT INTO dtaLogFile ' ;
+      SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value, ID, Employee_PIN ) ' ;
+      SQL := SQL + 'VALUES ';
+      SQL := SQL + '( ';
+      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+      SQL := SQL + IntToStr(gUser_ID) + ', ';
+      SQL := SQL + chr(39) + 'Day-off Entry' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'dtaDayOff' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Day_Off' + chr(39) + ', ';
+      SQL := SQL + chr(39) + ADODataSet3.FieldByName('Day_Off').AsString + chr(39) + ', ';
+      SQL := SQL + chr(39) + DateToStr(dtDate.Date) + chr(39)+ ', ';
+      SQL := SQL + ADODataSet3.FieldByName('ID').AsString + ', ';
+      SQL := SQL + ADODataSet1.FieldByName('Employee_PIN').AsString;
+      SQL := SQL + ')';
+      ADOConnection1.Execute(SQL);
+    end;
+
+end;
+
+procedure TfrmDayOff.Delete_Log;
+var
+  SQL: String;
+begin
+  SQL :=       'INSERT INTO dtaLogFile ' ;
+  SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, ID, Employee_PIN, Remarks ) ' ;
+  SQL := SQL + 'VALUES ';
+  SQL := SQL + '( ';
+  SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+  SQL := SQL + IntToStr(gUser_ID) + ', ';
+  SQL := SQL + chr(39) + 'Day-off Entry' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'Delete' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'dtaDayOff' + chr(39) + ', ';
+  SQL := SQL + vID + ', ';
+  SQL := SQL + chr(39) + txtEmp_PIN.Text + chr(39) + ', ';
+  SQL := SQL + chr(39) + txtEMP_PIN.Text + '|' + DateToStr(dtDate.Date) + chr(39) ;
+  SQL := SQL + ')';
+  ADOConnection1.Execute(SQL);
+end;
+
+procedure TfrmDayOff.cmbEmp_NameClick(Sender: TObject);
+begin
+  // retrieve employee_pin //
+    ADODataSet2.Close;
+    ADODataSet2.CommandText := 'SELECT Employee_PIN FROM dtaEmployees WHERE Employee_Name='''+cmbEmp_Name.Text+'''';
+    ADODataSet2.Open;
+    if ADODataSet2.RecordCount > 0 then
+    begin
+      txtemp_pin.Text := ADODataSet2.FieldByName('Employee_PIN').AsString;
+    end;
+    ADODataSet2.Close;
+end;
+
+procedure TfrmDayOff.DBGrid2CellClick(Column: TColumn);
+begin
+  Load_Data_Fields2;
+end;
+
+procedure TfrmDayOff.DBGrid2KeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  Load_Data_Fields2;
+end;
+
+procedure TfrmDayOff.Load_Data_Fields2;
+begin
+  // load edit fields
+  vID := ADODataSet3.FieldByName('ID').AsString;
+  dtDate.Date := ADODataSet3.FieldByName('Day_Off').Value;
+  txtRemarks.Text := LongDayNames[DayOfWeek(dtDate.Date)];
+end;
+
+procedure TfrmDayOff.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  Action := caFree;
+end;
+
+procedure TfrmDayOff.btnLoadExtractionClick(Sender: TObject);
+begin
+    with TfrmDayOffExtraction.Create(Application) do show;
+end;
+
+end.

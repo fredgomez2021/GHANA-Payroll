@@ -1,0 +1,311 @@
+// Name:  ExtractionGENERIC.pas
+// Description:  This type of extraction can be used by any project.
+//     It extracts data (production report) from MS excel file with
+//     standard format to an existing payroll database.  These data
+//     will then be used for the computation of production pay for
+//     each keyer during payroll processing if they are qualified to
+//     receive the pay or not.
+
+unit ExtractionGENERIC;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, DateUtils, StrUtils, ADODB, DB, ExtCtrls, FileCtrl, CommonModule;
+
+type
+    TfrmExtractionGENERIC = class(TForm)
+    OpenDialog1: TOpenDialog;
+    ADOConnection1: TADOConnection;
+    ADOQuery1: TADOQuery;
+    ADOTable1: TADOTable;
+    ADOCommand1: TADOCommand;
+    ADODataSet1: TADODataSet;
+    ADOQuery2: TADOQuery;
+    GroupBox1: TGroupBox;
+    Label1: TLabel;
+    Button1: TButton;
+    Edit1: TEdit;
+    Button2: TButton;
+    Edit2: TEdit;
+    Label2: TLabel;
+    Timer1: TTimer;
+    Label3: TLabel;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormActivate(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure Process_Log;
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmExtractionGENERIC: TfrmExtractionGENERIC;
+  string1, string2 : AnsiString;
+  connString: String;
+  sqlserver: String;
+  sqldatabase: String;
+  sqluser: String;
+  sqlpwd: String;
+  gUser : String;
+  gUser_ID : Integer;
+implementation
+
+uses ComObj;
+
+{$R *.dfm}
+
+procedure TfrmExtractionGENERIC.Button1Click(Sender: TObject);
+  var
+   oXL, oWB, oSheet: Variant;
+   Keyer: Word;
+   rowEnd : Word;
+
+   Tem : String;
+   vkeyer_ID : String;
+   vProject : String;
+   vTask : String;
+   vExtracted_Date : String;
+   vFormatted : String;
+   vBatch : String;
+   vClaims : String;
+   vOthers : String;
+   vPulls : String;
+   vKeyTime : String;
+   vKeyStroke : String;
+
+   x : integer;
+   //tempp : Integer;
+   SQLupdate : string;
+
+   TimeDiff : string;
+   Start_Time : string;
+   vSQL : string;
+   myDate: TDateTime;
+   I: INT64;
+
+   ctr : Integer;
+   colNum : Integer;
+   colEnd : Word;
+   cellString : String;
+
+begin
+    if Edit1.Text <> '' then
+    begin
+
+    Edit2.Text := 'start..';
+    edit2.Refresh;
+
+    oXL := CreateOleObject('Excel.Application');
+    //oXL.Visible := True;
+
+    oWB := oXL.Workbooks.Open(Edit1.text);
+    oSheet := oWB.ActiveSheet;
+
+    colNum := 3;
+    Keyer :=  1;
+
+    // Get the starting keyer line
+    Edit2.Text := 'open dtaProduction..';
+    edit2.Refresh;
+
+    // Determine the row number to start fetching data
+    repeat
+      Keyer := Keyer + 1;
+      Edit2.Text := 'Looking for employees, Reading ['+FloatToStr(Keyer)+']..';
+      Edit2.Refresh;
+      if Keyer > 100 then
+      begin
+        oXL.Quit;
+        ShowMessage('Employees not found...');
+        exit;
+      end;
+    until Pos('1',UpperCase(oSheet.Cells[Keyer,1]))>0;
+
+    // Determine the end of line to fetch data
+    rowEnd := Keyer;
+    repeat
+      rowEnd := rowEnd + 1;
+      Edit2.Text := 'Looking for end of file, Reading ['+FloatToStr(rowEnd)+']..';
+      Edit2.Refresh;
+      if rowEnd > 1000 then
+      begin
+        oXL.Quit;
+        ShowMessage('End of file not found, please check spreadsheet...');
+        exit;
+      end;
+
+      cellString := Trim(oSheet.Cells[rowEnd,1])
+    until Pos('***NOTHING FOLLOWS***',UpperCase(oSheet.Cells[rowEnd,1]))>0;
+
+    // Determine the end of column to fetch data
+    colEnd := 1;
+    repeat
+      colEnd := colEnd + 1;
+      Edit2.Text := 'Looking for end of column, Reading ['+FloatToStr(colEnd)+']..';
+      Edit2.Refresh;
+      if colEnd > 1000 then
+      begin
+        oXL.Quit;
+        ShowMessage('End of file not found, please check spreadsheet...');
+        exit;
+      end;
+    until Pos('TOTAL LEADS',UpperCase(oSheet.Cells[3,colEnd]))>0;
+
+
+    ADODATASET1.Connection := ADOCONNECTION1;
+
+    // Process data
+    vKeyer_ID := '';
+    repeat
+      Edit2.Text := 'Processing data, Reading ['+FloatToStr(Keyer)+']..';
+      Edit2.Refresh;
+
+      if (UpperCase(oSheet.Cells[Keyer,colNum])<>'') and (Length(Trim(oSheet.Cells[Keyer,colNum]))>0) then
+      begin
+          vKeyer_ID := UpperCase(oSheet.Cells[Keyer,colNum]);
+
+          repeat
+
+            // get tran date
+            colNum := colNum + 1;
+            vExtracted_Date := Trim(oSheet.Cells[3,colNum+1]);
+
+            if vExtracted_Date = '' then
+            begin
+              colNum := colNum - 1;
+              vExtracted_Date := Trim(oSheet.Cells[3,colNum+1]);
+            end;
+
+            ctr := 1;
+            repeat
+              vTask := Trim(oSheet.Cells[4,colNum]);
+              vClaims := Trim(oSheet.Cells[Keyer,colNum]);
+
+              if vClaims = '' then
+                vClaims := '0';
+
+              ADODATASET1.CommandText := 'SELECT * FROM dtaProduction (nolock) ' +
+                'WHERE Keyer_ID = ' + chr(39)+ vKeyer_id + chr(39) +
+                ' AND Task_id = ' + chr(39)+  vTask + chr(39) +
+                ' AND Tran_Date = ' + chr(39) +  vExtracted_Date + chr(39);
+              ADODATASET1.Open;
+              I := ADODATASET1.RecordCount;
+
+              if I = 0 then
+              begin
+                // insert //
+                vSQL := 'INSERT INTO dtaProduction ' +
+                      '( Task_ID, Keyer_ID, Tran_Date, Docs, Extracted_Tran_Date) ' +
+                      'VALUES ' +
+                      '( ''' + vTask + ''', ''' + vKeyer_ID + ''', ''' + vExtracted_Date + ''', ' + vClaims +
+                      ', ''' + vExtracted_Date + ''')';
+
+                ADOConnection1.Execute(vSQL);
+              end
+              else
+              begin
+                if (ADODataSet1.FieldByName('Time_ID').IsNull = true) then
+                begin
+                  // update //
+                  vSQL := 'UPDATE dtaProduction ' +
+                      'SET Docs = ' + vClaims + ' ' +
+                      ', Time_id = null ' +
+//                      ', KS = ' + vKeyStroke + ' ' +
+                      'WHERE Keyer_ID = ' + chr(39) + vKeyer_id + chr(39) +
+                        ' AND Task_ID = '+ chr(39) +  vTask + chr(39) +
+                        ' AND Tran_Date = ' + chr(39) +  vExtracted_Date + chr(39);
+                  ADOConnection1.Execute(vSQL);
+                end;
+              end;
+
+              ADODATASET1.Close;
+
+              colNum := colNum + 1;
+              ctr := ctr + 1;
+            until ctr > 3;
+
+          until colNum >= colEnd;
+        end;
+
+        Keyer := Keyer + 1;
+        colNum := 3;
+
+    until Keyer > rowEnd;
+
+    oXL.Quit;
+    Process_Log;
+    Edit2.Text := 'Processing Complete!!!';
+    Edit2.Refresh;
+
+  end
+  else
+    ShowMessage('Please select a file to extract ...');
+
+end;
+
+procedure TfrmExtractionGENERIC.Button2Click(Sender: TObject);
+begin
+  opendialog1.Filter := 'Excel Files (*.xls;*.xlsx) | *.xls | *.xlsx';
+  opendialog1.Execute;
+  Edit1.Text := OpenDialog1.Filename;
+end;
+procedure TfrmExtractionGENERIC.Button3Click(Sender: TObject);
+begin
+  frmExtractionGENERIC.Close;
+end;
+
+procedure TfrmExtractionGENERIC.FormCreate(Sender: TObject);
+begin
+  label2.Caption := TimeToStr(Time());
+  label3.Caption := FormatDateTime('dddd d of mmmm yyyy', Date);
+
+  ADOConnection1.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+  ADOConnection1.Connected := TRUE;
+end;
+
+procedure TfrmExtractionGENERIC.Timer1Timer(Sender: TObject);
+begin
+  label2.Caption := TimeToStr(Time());
+end;
+
+procedure TfrmExtractionGENERIC.Process_Log;
+var
+  ID: String;
+  SQL: String;
+begin
+  SQL :=       'INSERT INTO dtaLogFile ' ;
+  SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Remarks ) ' ;
+  SQL := SQL + 'VALUES ';
+  SQL := SQL + '( ';
+  SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+  SQL := SQL + IntToStr(gUser_ID) + ', ';
+  SQL := SQL + chr(39) + 'Extraction - GENERIC' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'Process' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'dtaProduction' + chr(39) + ', ';
+  SQL := SQL + chr(39) + Edit1.Text + chr(39);
+  SQL := SQL + ')';
+  ADOConnection1.Execute(SQL);
+end;
+
+procedure TfrmExtractionGENERIC.FormActivate(Sender: TObject);
+begin
+  gUser := ActiveUserName;  // this is only temporary and must be modified
+  gUser_ID := StrToInt(ActiveUserID);    // this is only temporary
+end;
+
+procedure TfrmExtractionGENERIC.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  Action := caFree;
+end;
+
+end.

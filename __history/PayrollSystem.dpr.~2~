@@ -1,0 +1,70 @@
+program PayrollSystem;
+
+uses
+  Forms,
+  Access in 'Access.pas' {frmAccess},
+  EmployeeFileMaintenance in 'EmployeeFileMaintenance.pas' {frmEmployeeFileMaintenance},
+  EmployeeList in 'EmployeeList.pas' {frmEmployeeList},
+  IdleEntry in 'IdleEntry.pas' {frmIdleEntry},
+  IdleRemarks in 'IdleRemarks.pas' {frmIdleRemarks},
+  IdleRemarksMaintenance in 'IdleRemarksMaintenance.pas' {frmIdleRemarksMaintenance},
+  CommonModule in 'CommonModule.pas',
+  UserNameEntry in 'UserNameEntry.pas' {frmUserNameEntry},
+  ViewIdleTimeEntry in 'ViewIdleTimeEntry.pas' {frmViewKeyedIdleTime},
+  UserLogIn in 'UserLogIn.pas' {frmuserLogIn},
+  MainMenu in 'MainMenu.pas' {frmMenu},
+  TimeExtract in 'TimeExtract.pas' {frmTimeExtraction},
+  LogTimeMaintenance in 'LogTimeMaintenance.pas' {frmLogTimeMaintenance},
+  UpdateRateStatus in 'UpdateRateStatus.pas' {frmUpdateRateStatus},
+  KeyerRemarksMaintenance in 'KeyerRemarksMaintenance.pas' {frmKeyerRemarksMaintenance},
+  KeyerRemarks in 'KeyerRemarks.pas' {frmKeyerRemarks},
+  TaskRemarks in 'TaskRemarks.pas' {frmTaskRemarks},
+  Modification in 'Modification.pas' {frmOvertimeValidation},
+  PayrollProcess in 'PayrollProcess.pas' {frmPayrollProcess},
+  TaskRemarksMaintenance in 'TaskRemarksMaintenance.pas' {frmTaskRemarksMaintenance},
+  Users in 'Users.pas' {frmUsers},
+  daily_extract in 'daily_extract.pas' {frmDailySchedExtract},
+  KeyerSchedule in 'KeyerSchedule.pas' {frmKeyerSchedule},
+  OvertimeVerification in 'OvertimeVerification.pas' {frmOvertimeVerification},
+  earn_deduction in 'earn_deduction.pas' {frmEarnDed},
+  ExtractionsList in 'ExtractionsList.pas' {frmExtractionsList},
+  ExtractionAFLAC in 'ExtractionAFLAC.pas' {frmExtractionAFLAC},
+  ExtractionINDEXING in 'ExtractionINDEXING.pas' {frmExtractionINDEXING},
+  ExtractionBCBS in 'ExtractionBCBS.pas' {frmExtractionBCBS},
+  ExtractionGENERIC in 'ExtractionGENERIC.pas' {frmExtractionGENERIC},
+  ExtractedTimePeriods in 'ExtractedTimePeriods.pas' {frmExtractedTimePeriods},
+  untPaySlip in 'untPaySlip.pas' {PaySlip},
+  PSDtaLog in 'PSDtaLog.pas' {frmLogFile},
+  ExtractionUHRC in 'ExtractionUHRC.pas' {frmExtractionUHRC},
+  ExtractionWELLPOINT in 'ExtractionWELLPOINT.pas' {frmExtractionWELLPOINT},
+  ExtractPayrollProcess in 'ExtractPayrollProcess.pas' {frmExtractPayrollProcess},
+  IdleEntry2 in 'IdleEntry2.pas' {frmIdleEntry2},
+  DayOff in 'DayOff.pas' {frmDayOff},
+  PayRep1 in 'PayRep1.pas' {frmPayRep1},
+  PayRep2 in 'PayRep2.pas' {frmPayRep2},
+  ExtractionARPI in 'ExtractionARPI.pas' {frmExtractionARPI},
+  HolidayMaintenance in 'HolidayMaintenance.pas' {frmHolidayMaintenance},
+  frmProductionViewer in 'frmProductionViewer.pas' {ProductionViewer},
+  ExtractionUHGLatest in 'ExtractionUHGLatest.pas' {frmExtractionUHGLatest},
+  BALLYSExtraction in 'BALLYSExtraction.pas' {frmBALLYSExtraction},
+  EmployeeWorkDays in 'EmployeeWorkDays.pas' {frmEmployeeWorkDays},
+  ExtractionLCA in 'ExtractionLCA.pas' {frmExtractionLCA},
+  ExtractionIdleTime in 'ExtractionIdleTime.pas' {frmIdleTimeExtraction},
+  ExtractionDayOff in 'ExtractionDayOff.pas' {frmDayOffExtraction},
+  EmployeeList1 in 'EmployeeList1.pas' {frmEmployeeList1},
+  ExtractedDayOffList in 'ExtractedDayOffList.pas' {frmExtractedDayOff},
+  ProcessViewer in 'ProcessViewer.pas' {frmProcessViewer},
+  ProductionDocuments in 'ProductionDocuments.pas' {frmProductionDocuments},
+  ExtractionWlpGeneric in 'ExtractionWlpGeneric.pas' {frmExtractionWlpGeneric},
+  CodeTableEntries in 'CodeTableEntries.pas' {frmCodeTableEntries},
+  KeyerIDMaintenanceExpress in 'KeyerIDMaintenanceExpress.pas' {frmKeyerIDMaintenanceExpress};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TfrmuserLogIn, frmuserLogIn);
+  Application.CreateForm(TfrmMenu, frmMenu);
+  Application.Run;
+end.
+

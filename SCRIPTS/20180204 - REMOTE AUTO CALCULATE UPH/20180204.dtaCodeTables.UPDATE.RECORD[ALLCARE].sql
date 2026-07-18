@@ -1,0 +1,1 @@
+update dtacodetables set calculateuph_quality=0 where code_category='primary_task_id' and codeid=160 and code='ALLCARE'

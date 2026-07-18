@@ -1,0 +1,439 @@
+unit EmployeeList1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Grids, DBGrids, ExtCtrls, DB, ADODB, CommonModule;
+
+type
+  TfrmEmployeeList1 = class(TForm)
+    GroupBox1: TGroupBox;
+    btnGenerate: TButton;
+    Label9: TLabel;
+    cmbProject: TComboBox;
+    cmbPosition: TComboBox;
+    Label1: TLabel;
+    cmbStatus: TComboBox;
+    Label2: TLabel;
+    cmbLocation: TComboBox;
+    Label3: TLabel;
+    lblName: TLabel;
+    ADOConnection: TADOConnection;
+    dsCombo: TADODataSet;
+    dsResult: TADODataSet;
+    procedure btnGenerateClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure btnCloseClick(Sender: TObject);
+
+    procedure LoadPrimaryTask();
+    procedure LoadJobPosition();
+    procedure LoadEmp_Loc();
+    procedure LoadEmp_Status();
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmEmployeeList1: TfrmEmployeeList1;
+
+implementation
+uses comobj;
+{$R *.dfm}
+
+procedure TfrmEmployeeList1.btnCloseClick(Sender: TObject);
+begin
+  frmEmployeeList1.Close;
+end;
+
+procedure TfrmEmployeeList1.LoadPrimaryTask();
+begin
+
+  dsCombo.Close;
+  dsCombo.CommandText := 'SELECT code FROM dtaCodeTables ' +
+    'WHERE code_category = ''Primary_Task_ID'' ORDER BY code';
+  dsCombo.Active := TRUE;
+
+  if dsCombo.RecordCount > 0 then
+  begin
+    dsCombo.First;
+
+    cmbProject.Clear;
+    while not dsCombo.Eof do
+    begin
+
+      cmbProject.Items.Add(dsCombo.FieldByName('code').AsString);
+      dsCombo.Next;
+
+    end;
+  end;
+
+end;
+
+procedure TfrmEmployeeList1.LoadJobPosition();
+begin
+
+  dsCombo.Close;
+  dsCombo.CommandText := 'SELECT description FROM dtaCodeTables ' +
+    'WHERE code_category = ''Job_Position'' ORDER BY description';
+  dsCombo.Active := TRUE;
+
+  if dsCombo.RecordCount > 0 then
+  begin
+    dsCombo.First;
+
+    cmbPosition.Clear;
+    while not dsCombo.Eof do
+    begin
+
+      cmbPosition.Items.Add(dsCombo.FieldByName('description').AsString);
+      dsCombo.Next;
+
+    end;
+  end;
+end;
+
+procedure TfrmEmployeeList1.LoadEmp_Status();
+begin
+
+  dsCombo.Close;
+  dsCombo.CommandText := 'SELECT code FROM dtaCodeTables ' +
+    'WHERE code_category= ''Emp_Status'' ORDER BY code';
+  dsCombo.Active := TRUE;
+
+  if dsCombo.RecordCount > 0 then
+  begin
+    dsCombo.First;
+
+    cmbStatus.Clear;
+    while not dsCombo.Eof do
+    begin
+
+      cmbStatus.Items.Add(dsCombo.FieldByName('code').AsString);
+      dsCombo.Next;
+
+    end;
+  end;
+end;
+
+
+procedure TfrmEmployeeList1.LoadEmp_Loc();
+begin
+
+  dsCombo.Close;
+  dsCombo.CommandText := 'SELECT description FROM dtaCodeTables ' +
+    'WHERE Code_Category=''Emp_Loc'' ORDER BY description';
+  dsCombo.Active := TRUE;
+
+  if dsCombo.RecordCount > 0 then
+  begin
+    dsCombo.First;
+
+    cmbLocation.Clear;
+    while not dsCombo.Eof do
+    begin
+
+      cmbLocation.Items.Add(dsCombo.FieldByName('description').AsString);
+      dsCombo.Next;
+
+    end;
+  end;
+end;
+
+
+procedure TfrmEmployeeList1.FormCreate(Sender: TObject);
+begin
+  ADOConnection.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+  ADOConnection.Connected := TRUE;
+end;
+
+procedure TfrmEmployeeList1.FormActivate(Sender: TObject);
+begin
+
+  LoadEmp_Loc();
+  LoadJobPosition();
+  LoadPrimaryTask();
+  LoadEmp_Status();
+
+end;
+
+procedure TfrmEmployeeList1.btnGenerateClick(Sender: TObject);
+var
+  oxl, owb, oSheet : variant;
+  row : integer;
+
+  sqlStr : string;
+
+  sProject, sPosition, sStatus, sLocation : string;
+begin
+
+  sProject := cmbProject.Text;
+  sPosition := cmbPosition.Text;
+  sStatus := cmbStatus.Text;
+  sLocation := cmbLocation.Text;
+
+  if ((sProject <> '') and (sPosition <> '') and (sStatus <> '') and (sLocation <> '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' AND job_position_code = ''' + sPosition + ''' AND emp_status = ''' + sStatus +
+      ''' AND emp_loc = ''' + sLocation + ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition <> '') and (sStatus <> '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' AND job_position_code = ''' + sPosition + ''' AND emp_status = ''' + sStatus +
+      ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition <> '') and (sStatus = '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' AND job_position_code = ''' + sPosition + ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition = '') and (sStatus = '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' ORDER BY employee_name'
+
+
+  else if ((sProject = '') and (sPosition <> '') and (sStatus <> '') and (sLocation <> '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE job_position_code = ''' + sPosition +
+      ''' AND emp_status = ''' + sStatus + ''' AND emp_loc = ''' + sLocation + ''' ORDER BY employee_name'
+
+  else if ((sProject = '') and (sPosition = '') and (sStatus <> '') and (sLocation <> '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE emp_status = ''' + sStatus +
+      ''' AND emp_loc = ''' + sLocation + ''' ORDER BY employee_name'
+
+
+  else if ((sProject = '') and (sPosition = '') and (sStatus = '') and (sLocation <> '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE emp_loc = ''' + sLocation + ''' ORDER BY employee_name'
+
+
+  else if ((sProject = '') and (sPosition = '') and (sStatus = '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees ORDER BY employee_name'
+
+
+  else if ((sProject = '') and (sPosition <> '') and (sStatus <> '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE job_position_code = ''' + sPosition +
+      ''' AND emp_status = ''' + sStatus + ''' ORDER BY employee_name'
+
+  else if ((sProject = '') and (sPosition <> '') and (sStatus = '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE job_position_code = ''' + sPosition +
+      ''' ORDER BY employee_name'
+
+  else if ((sProject = '') and (sPosition = '') and (sStatus <> '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE emp_status = ''' + sStatus +
+      ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition = '') and (sStatus = '') and (sLocation <> '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' AND emp_loc = ''' + sLocation + ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition <> '') and (sStatus <> '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' AND job_position_code = ''' + sPosition + ''' AND emp_status = ''' + sStatus +
+      ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition <> '') and (sStatus = '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' AND job_position_code = ''' + sPosition + ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition = '') and (sStatus = '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE job_position_code = ''' + sPosition +
+      ''' AND emp_status = ''' + sStatus + ''' AND emp_loc = ''' + sLocation + ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition = '') and (sStatus <> '') and (sLocation = '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' AND emp_status = ''' + sStatus + ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition = '') and (sStatus <> '') and (sLocation <> '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' AND emp_status = ''' + sStatus + ''' AND emp_loc = ''' + sLocation +
+      ''' ORDER BY employee_name'
+
+  else if ((sProject <> '') and (sPosition <> '') and (sStatus = '') and (sLocation <> '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE primary_task_id = ''' + sProject +
+      ''' AND job_position_code = ''' + sPosition + ''' AND emp_loc = ''' + sLocation +
+      ''' ORDER BY employee_name'
+
+  else if ((sProject = '') and (sPosition <> '') and (sStatus = '') and (sLocation <> '')) then
+
+    sqlStr := 'SELECT * FROM dtaEmployees WHERE job_position_code = ''' + sPosition +
+      ''' AND emp_loc = ''' + sLocation + ''' ORDER BY employee_name';
+
+
+
+
+
+
+    oxl := CreateOleObject('Excel.Application');
+    owb := oxl.workbooks.add();
+
+    oSheet := owb.Sheets[1];
+    oSheet.Name := 'Employee list';
+
+
+
+    //write header
+    row := 1;
+    oSheet.Range['A' + IntToStr(row) + ':B' + IntToStr(row)].Font.Size := 10;
+    oSheet.Range['A' + IntToStr(row) + ':B' + IntToStr(row)].Font.Bold := true;
+    oSheet.Cells[row, 1] := 'Exactstar employee list';
+
+    row := row + 1;
+    oSheet.Cells[row, 1] := 'as of ' + DateToStr(Date());
+
+    row := row + 2;
+    oSheet.Range['A' + IntToStr(row) + ':W' + IntToStr(row)].Font.Bold := true;
+    oSheet.Range['A' + IntToStr(row) + ':W' + IntToStr(row)].Font.Size := 9;
+
+    oSheet.Cells[row, 1] := 'PIN';
+    oSheet.Cells[row, 2] := 'name';
+    oSheet.Cells[row, 3] := 'last name';
+    oSheet.Cells[row, 4] := 'first name';
+    oSheet.Cells[row, 5] := 'middle name';
+    oSheet.Cells[row, 6] := 'position';
+    oSheet.Cells[row, 7] := 'project/task ID';
+    oSheet.Cells[row, 8] := 'status';
+    oSheet.Cells[row, 9] := 'location';
+    oSheet.Cells[row, 10] := 'date hired';
+    oSheet.Cells[row, 11] := 'wATM';
+    oSheet.Cells[row, 12] := 'ATM account no.';
+    oSheet.Cells[row, 13] := 'ATM card no.';
+    oSheet.Cells[row, 14] := 'tax code';
+    oSheet.Cells[row, 15] := 'rate hour';
+    oSheet.Cells[row, 16] := 'monthly rate';
+    oSheet.Cells[row, 17] := 'sss no';
+    oSheet.Cells[row, 18] := 'philhealth no';
+    oSheet.Cells[row, 19] := 'pag-ibig no';
+    oSheet.Cells[row, 20] := 'TIN';
+    oSheet.Cells[row, 21] := 'date of birth';
+    oSheet.Cells[row, 22] := 'years of stay';
+    oSheet.Cells[row, 23] := 'remarks';
+    oSheet.Cells[row, 24] := 'payroll included?';
+    oSheet.Cells[row, 25] := 'email';
+    oSheet.Cells[row, 26] := 'mp2 qualified';
+    oSheet.Cells[row, 27] := 'night diff';
+
+    //resize column widths
+    oxl.Evaluate('A1').ColumnWidth := 8;
+    oxl.Evaluate('B1').ColumnWidth := 45;
+    oxl.Evaluate('C1').ColumnWidth := 20;
+    oxl.Evaluate('D1').ColumnWidth := 20;
+    oxl.Evaluate('E1').ColumnWidth := 20;
+    oxl.Evaluate('F1').ColumnWidth := 20;
+    oxl.Evaluate('G1').ColumnWidth := 20;
+    oxl.Evaluate('H1').ColumnWidth := 20;
+    oxl.Evaluate('I1').ColumnWidth := 15;
+    oxl.Evaluate('J1').ColumnWidth := 15;
+    oxl.Evaluate('K1').ColumnWidth := 10;
+    oxl.Evaluate('L1').ColumnWidth := 25;
+    oxl.Evaluate('M1').ColumnWidth := 25;
+    oxl.Evaluate('N1').ColumnWidth := 10;
+    oxl.Evaluate('O1').ColumnWidth := 10;
+    oxl.Evaluate('P1').ColumnWidth := 15;
+    oxl.Evaluate('Q1').ColumnWidth := 20;
+    oxl.Evaluate('R1').ColumnWidth := 20;
+    oxl.Evaluate('S1').ColumnWidth := 20;
+    oxl.Evaluate('T1').ColumnWidth := 20;
+    oxl.Evaluate('U1').ColumnWidth := 15;
+    oxl.Evaluate('V1').ColumnWidth := 15;
+    oxl.Evaluate('W1').ColumnWidth := 25;
+    oxl.Evaluate('X1').ColumnWidth := 20;
+    oxl.Evaluate('Y1').ColumnWidth := 50;
+    oxl.Evaluate('Z1').ColumnWidth := 20;
+    oxl.Evaluate('AA1').ColumnWidth := 20;
+
+    row := row + 1;
+
+    oSheet.Cells[row, 1].RowHeight := 3;
+
+    row := row + 1;
+
+    //write details
+    dsResult.Close;
+    dsResult.CommandText := sqlStr;
+    dsResult.Open;
+
+    repeat
+
+      oSheet.Cells[row, 1] := dsResult.FieldByName('employee_pin').AsString;
+      oSheet.Cells[row, 2] := dsResult.FieldByName('employee_name').AsString;
+      oSheet.Cells[row, 3] := dsResult.FieldByName('emplname').AsString;
+      oSheet.Cells[row, 4] := dsResult.FieldByName('empfname').AsString;
+      oSheet.Cells[row, 5] := dsResult.FieldByName('empmname').AsString;
+      oSheet.Cells[row, 6] := dsResult.FieldByName('job_position_code').AsString;
+      oSheet.Cells[row, 7] := dsResult.FieldByName('primary_task_id').AsString;
+      oSheet.Cells[row, 8] := dsResult.FieldByName('emp_status').AsString;
+      oSheet.Cells[row, 9] := dsResult.FieldByName('emp_loc').AsString;
+      oSheet.Cells[row, 10] := dsResult.FieldByName('date_hired').AsString;
+      oSheet.Cells[row, 11] := dsResult.FieldByName('wATM').AsString;
+      oSheet.Cells[row, 12] := dsResult.FieldByName('ATM_number').AsString;
+      oSheet.Cells[row, 13] := dsResult.FieldByName('ATMCardNumber').AsString;
+      oSheet.Cells[row, 14] := dsResult.FieldByName('tax_code').AsString;
+
+      oSheet.Range['O' + IntToStr(row) + ':O' + IntToStr(row)].Style := 'Comma';
+      oSheet.Cells[row, 15] := dsResult.FieldByName('rate_hour').AsString;
+
+      oSheet.Range['P' + IntToStr(row) + ':P' + IntToStr(row)].Style := 'Comma';
+      oSheet.Cells[row, 16] := dsResult.FieldByName('monthly_rate').AsString;
+      oSheet.Cells[row, 17] := '''' + dsResult.FieldByName('sssno').AsString;
+      oSheet.Cells[row, 18] := '''' + dsResult.FieldByName('phicno').AsString;
+      oSheet.Cells[row, 19] := '''' + dsResult.FieldByName('pagibighdmfno').AsString;
+      oSheet.Cells[row, 20] := dsResult.FieldByName('tin').AsString;
+      oSheet.Cells[row, 21] := dsResult.FieldByName('dateofbirth').AsString;
+      oSheet.Cells[row, 22] := dsResult.FieldByName('year_stay').AsString;
+      oSheet.Cells[row, 23] := dsResult.FieldByName('ysremarks').AsString;
+
+      if dsResult.FieldByName('processincluded').AsString = 'True' then
+        oSheet.Cells[row, 24] := 'Yes'
+      else
+        oSheet.Cells[row, 24] := 'No';
+
+      oSheet.Cells[row, 25] := dsResult.FieldByName('emailadd1').AsString;
+
+      // mp2 qualified
+      if dsResult.FieldByName('mp2qualified').AsString = 'True' then
+        oSheet.Cells[row, 26] := 'Yes'
+      else
+        oSheet.Cells[row, 26] := 'No';
+
+      // night diff
+      if dsResult.FieldByName('night_diff').AsString = 'True' then
+        oSheet.Cells[row, 27] := 'Yes'
+      else
+        oSheet.Cells[row, 27] := 'No';
+
+      row := row + 1;
+      dsResult.Next;
+
+    until dsResult.Eof;
+
+    dsResult.Close;
+
+    oSheet.Range['A' + IntToStr(row) + ':B' + IntToStr(row)].Font.Bold := true;
+    oSheet.Cells[row, 1] := '***nothing follows***';
+
+    oxl.Visible := true;
+
+end;
+
+end.

@@ -1,0 +1,9 @@
+IF NOT EXISTS (
+SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME='dtaTime_Detail' AND COLUMN_NAME='IsModified')
+ALTER TABLE [dtaTime_Detail] ADD [IsModified] [bit] NULL CONSTRAINT [DF_dtaTime_Detail_IsModified]  DEFAULT ((0))
+
+IF NOT EXISTS (
+SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME='dtaTime_Detail' AND COLUMN_NAME='IsDeleted')
+ALTER TABLE [dtaTime_Detail] ADD [IsDeleted] [bit] NULL CONSTRAINT [DF_dtaTime_Detail_IsDeleted]  DEFAULT ((0))

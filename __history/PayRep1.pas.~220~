@@ -1,0 +1,1886 @@
+// Name:  PayRep1.pas
+// Description:  This window is used every after processing
+//     payroll or as desired.  This form generates an excel
+//     file of payroll summary.
+
+unit PayRep1;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ADODB, DB, StdCtrls, StrUtils, ExtCtrls, CommonModule, ComCtrls,
+  DateUtils;
+
+type
+  TfrmPayRep1 = class(TForm)
+    GroupBox1: TGroupBox;
+    Button1: TButton;
+    Edit2: TEdit;
+    OpenDialog1: TOpenDialog;
+    ADOConnection1: TADOConnection;
+    ADOQuery1: TADOQuery;
+    ADODataSet1: TADODataSet;
+    Label3: TLabel;
+    Label4: TLabel;
+    DateTimePicker1: TDateTimePicker;
+    DateTimePicker2: TDateTimePicker;
+    SaveDialog1: TSaveDialog;
+    ADODataSet2: TADODataSet;
+    cboProject: TComboBox;
+    Label1: TLabel;
+    dsFillBranch: TADODataSet;
+    Shape1: TShape;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormActivate(Sender: TObject);
+    procedure DateTimePicker1Change(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure FillBranchCombo();
+
+    procedure UpdateDateTo();
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmPayRep1: TfrmPayRep1;
+  sqlserver : string;
+  sqldatabase : string;
+  sqluser : string;
+  sqlpwd : string;
+  gUser : String;
+  gUser_ID : Integer;
+  SQL : string;
+
+implementation
+uses comobj;
+{$R *.dfm}
+
+procedure TfrmPayRep1.Button3Click(Sender: TObject);
+begin
+  opendialog1.Filter := 'Excel File(*.xls) | *.xls';
+  opendialog1.Execute;
+end;
+
+procedure TfrmPayRep1.Button2Click(Sender: TObject);
+begin
+  frmPayRep1.close;
+end;
+
+procedure TfrmPayRep1.Button1Click(Sender: TObject);
+var
+   oxl, owb, osheet : variant;
+   keyer: word;
+   Tem : String;
+   vKeyer_ID: String;
+   vExtracted_Date : String;
+   vProcessed: string;
+   vTask_ID : string;
+   vBatches : Integer;
+   vClaims : Integer;
+   vPulls : Integer;
+   vMins : double;
+   x: Integer;
+   SQLupdate: String;
+   rec_count : Integer;
+
+   TimeDiff : string;
+   Start_Time : string;
+   vSQL : string;
+
+    dt : TDateTime;
+    day: Integer;
+    sPeriod1, sPeriod2, tPeriod1, tPeriod2: String;
+    sTempPrevPeriod : String;
+    sYear : String;
+    I : Int64;
+    row : Integer;
+
+    varAve : String;
+    monthName, monthNum : String;
+
+    sTempAtmNumber : String;
+
+    dtDateHired, dtPeriod1 : TDateTime;
+    iDateHiredDays : Integer;
+    sDateHiredGrouping : String;
+begin
+
+    dt := DateTimePicker1.Date;
+    dtPeriod1 := dt;
+
+    monthName := FormatDateTime('mmmm',dt);
+    monthNum := FormatDateTime('MM',dt);
+    sYear := FormatDateTime('yyyy',dt);
+    
+    day := DayOfTheMonth(dt);
+    if(day<>21) then
+    begin
+      ShowMessage('The Period From should be 21st of the month.');
+      DateTimePicker1.SetFocus;
+      exit;
+    end;
+
+    sPeriod1 := chr(39)+DateToStr(DateTimePicker1.Date)+chr(39);
+    sPeriod2 := chr(39)+DateToStr(DateTimePicker2.Date)+chr(39);
+    tPeriod1 := chr(39)+DateToStr(DateTimePicker1.Date)+' 00:00:00AM' + chr(39);
+    tPeriod2 := chr(39)+DateToStr(DateTimePicker2.Date)+' 23:59:00PM' + chr(39);
+
+    ADODATASET1.Close;
+    ADODATASET1.Connection := ADOCONNECTION1;
+    ADODATASET1.CommandText := 'Select distinct period1 from dtaPayrollProcess where Period1='+sPeriod2;
+    ADODATASET1.Open;
+    I := ADODataSet1.RecordCount;
+    ADODataSet1.Close;
+    if I = 0 then
+    begin
+      ShowMessage('Payroll Period does not have data on file.');
+      exit;
+    end;
+
+
+    {if day = 21 then
+    begin
+      if Length(sPeriod1) = 10 then
+        sPeriod2 := chr(39)+'1/20/'+AnsiMidStr(sPeriod1,6,4)+chr(39)
+      else if Length(sPeriod1) = 11 then
+        sPeriod2 := chr(39)+'1/20/'+AnsiMidStr(sPeriod1,7,4)+chr(39);
+
+      if StrToInt(monthNum) = 1 then
+      begin
+        sTempPrevPeriod := chr(39) + '12/21/' + IntToStr(StrToInt(sYear) - 1) + chr(39);
+      end
+      else
+      begin
+        sTempPrevPeriod := chr(39) + IntToStr(StrToInt(monthNum) - 1) + '/21/' + IntToStr(StrToInt(sYear)) + chr(39);
+      end;
+
+    end
+    else
+    begin
+      if Length(sPeriod1) = 11 then
+        sPeriod2 := chr(39)+'1/20/'+AnsiMidStr(sPeriod1,7,4)+chr(39)
+      else if Length(sPeriod1) = 12 then
+        sPeriod2 := chr(39)+'1/20/'+AnsiMidStr(sPeriod1,8,4)+chr(39);
+
+      // get previous cutoff period
+      sTempPrevPeriod := chr(39) + IntToStr(StrToInt(monthNum)) + '/21/' + IntToStr(StrToInt(sYear)) + chr(39);
+    end;}
+
+
+    vSQL := 'EXEC PayRep1 '+sPeriod1+','+sPeriod2;
+
+    ADOConnection1.Execute(vSQL);
+
+    oxl := CreateOleObject('Excel.Application');
+    owb := oxl.workbooks.add();
+
+    owb.Worksheets.Add();
+    owb.Worksheets.Add();
+    //owb.Worksheets.Add();
+    //owb.Worksheets.Add();
+    //owb.Worksheets.Add();
+    //owb.Worksheets.Add();
+
+    //owb.saveas('c:\omar.xls');
+    osheet := owb.Sheets[1];
+    osheet.Name := 'Payroll Details';
+
+    //if MessageDlg('The selected pay period has been proceed, do you want to re-process',mtConfirmation,[mbYes,mbNo],0) = mrNo then
+    //savedialog1.execute();
+    //label1.Caption := savedialog1.FileName;
+
+    if (cboProject.Text <> '') then
+      ADODATASET1.CommandText := 'SELECT * FROM xPayRep1 WHERE primary_task_id = ''' +
+        cboProject.Text + ''''
+    else
+      ADODATASET1.CommandText := 'SELECT * FROM xPayRep1';
+
+    ADODATASET1.Open;
+
+
+    row := 1;
+    oSheet.Cells[row,1] := 'Payroll Period';
+    oSheet.Cells[row,2] := DateToStr(DateTimePicker1.Date) + ' - ' + DateToStr(DateTimePicker2.Date);
+    row := 3;
+    oSheet.Cells[row,1] := 'Employee Name';
+    oSheet.Cells[row,2] := 'Primary Task ID';
+    oSheet.Cells[row,3] := 'Job Position Code';
+    //oSheet.Cells[row,4] := 'Hierarchy';
+    oSheet.Cells[row,4] := 'Employee PIN';
+    oSheet.Cells[row,5] := 'Basic Pay';
+    //oSheet.Cells[row,7] := 'Holiday Pay';
+    //oSheet.Cells[row,8] := 'OT Pay';
+    //oSheet.Cells[row,9] := 'OT Holiday Pay';
+    //oSheet.Cells[row,10] := 'OT DayOff Pay';
+    //oSheet.Cells[row,11] := 'DayOff Pay';
+    //oSheet.Cells[row,12] := 'Night Diff Pay';
+    //oSheet.Cells[row,13] := 'Night Diff Holiday Pay';
+    //oSheet.Cells[row,14] := 'Night Diff DayOff Pay';
+    oSheet.Cells[row,6] := 'Other Earnings Bef. Tax';
+    oSheet.Cells[row,7] := 'Adjustment in Basic Pay';
+    //oSheet.Cells[row,8] := 'Gross Pay';
+    //oSheet.Cells[row,9] := 'With Tax';
+    //oSheet.Cells[row,10] := 'SSS EE';
+    //oSheet.Cells[row,20] := 'MPF EE';
+    //oSheet.Cells[row,21] := 'PhilHealth EE';
+    //oSheet.Cells[row,22] := 'Pagibig EE';
+
+    oSheet.Cells[row,8] := 'Other Earnings After Tax';
+
+    oSheet.Cells[row,9] := 'UPH Bonus';
+    oSheet.Cells[row,10] := 'Quality Bonus';
+    oSheet.Cells[row,11] := 'Retention Bonus';
+    //oSheet.Cells[row,28] := 'Attendance Bonus';
+    //oSheet.Cells[row,29] := 'Perfect Attendance Bonus';
+    oSheet.Cells[row,12] := 'Other Bonus';
+    //oSheet.Cells[row,31] := 'Training Bonus';
+    oSheet.Cells[row,13] := 'FreeField Bonus';
+
+    //oSheet.Cells[row,33] := 'Red Ribbon Advances';
+    //oSheet.Cells[row,34] := 'Cash Advances';
+    //oSheet.Cells[row,35] := 'HDMF Loan';
+    //oSheet.Cells[row,36] := 'SSS Loan';
+    //oSheet.Cells[row,37] := 'HDMF Calamity';
+    //oSheet.Cells[row,38] := 'SSS Calamity';
+    //oSheet.Cells[row,39] := 'Other';
+
+    //oSheet.Cells[row,40] := 'Advances';
+
+    oSheet.Cells[row,14] := 'Gross Pay';
+    oSheet.Cells[row,15] := 'With Tax';
+    oSheet.Cells[row,16] := 'Total Ded';
+    oSheet.Cells[row,17] := 'Net Pay';
+    //oSheet.Cells[row,43] := 'Atm Number';
+    //oSheet.Cells[row,44] := 'With ATM?';
+    oSheet.Cells[row,18] := 'SSS EE';
+    oSheet.Cells[row,19] := 'SSS ER';
+    //oSheet.Cells[row,46] := 'ECC ER';
+    //oSheet.Cells[row,47] := 'MPF ER';
+    //oSheet.Cells[row,48] := 'PhilHealth ER';
+    //oSheet.Cells[row,49] := 'Pagibig ER';
+
+    oSheet.Cells[row,20] := 'TIER EE';
+    oSheet.Cells[row,21] := 'TIER ER';
+    //oSheet.Cells[row,51] := 'YTD MP2 Amount';
+
+    //oSheet.Cells[row,52] := '13th Month';
+    //oSheet.Cells[row,53] := 'YTD 13th Month';
+    oSheet.Cells[row,22] := 'Total Payroll Expense';
+    oSheet.Cells[row,23] := 'Hire Date Grouping';
+    //oSheet.Cells[row,56] := 'Hours Worked';
+
+    oSheet.Cells[row,24] := 'Email';
+    oSheet.Cells[row,25] := 'GH Card No.';
+
+    row := 4;
+
+
+    //get average
+    ADODataSet2.Close;
+    ADODataSet2.CommandText := 'SELECT AVG(tPay_Exp) AS Average FROM xPayRep1 WHERE Primary_Task_ID <> ''ADMIN''' +
+        ' AND Primary_Task_ID <> ''FINANCIAL''';
+    ADODataSet2.Open;
+
+    varAve := ADODataSet2.FieldByName('Average').AsString;
+
+
+    repeat
+
+      // get employee email
+      ADODataSet2.Close;
+      ADODataSet2.CommandText := 'SELECT ISNULL(EmailAdd1,'''') AS EmpEmail, Date_Hired, GhCardNumber ' +
+        'FROM dtaEmployees ' +
+        'WHERE Emp_Status = ''ACTIVE'' ' +
+        'AND ProcessIncluded = 1 ' +
+        'AND Employee_PIN = ' + AdoDataSet1.FieldByName('Employee_PIN').AsString;
+
+      ADODataSet2.Open;
+
+      Edit2.Text := ADODATASET1.FieldByName('Employee_Name').AsString;
+      Edit2.Refresh;
+      oSheet.Cells[row,1] := AdoDataSet1.FieldByName('Employee_Name').AsString;
+      oSheet.Cells[row,2] := AdoDataSet1.FieldByName('Primary_Task_ID').AsString;
+      oSheet.Cells[row,3] := AdoDataSet1.FieldByName('Job_Position_Code').AsString;
+      //oSheet.Cells[row,4] := AdoDataSet1.FieldByName('Hierarchy').AsString;
+      oSheet.Cells[row,4] := AdoDataSet1.FieldByName('Employee_PIN').AsString;
+      oSheet.Cells[row,5] := AdoDataSet1.FieldByName('Basic_Pay').AsString;
+      //oSheet.Cells[row,7] := AdoDataSet1.FieldByName('Holiday_Pay').AsString;
+      //oSheet.Cells[row,8] := AdoDataSet1.FieldByName('OT_Pay2').AsString;
+      //oSheet.Cells[row,9] := AdoDataSet1.FieldByName('ot_holiday').AsString;
+      //oSheet.Cells[row,10] := AdoDataSet1.FieldByName('ot_dayoff').AsString;
+      //oSheet.Cells[row,11] := AdoDataSet1.FieldByName('Day_Off_Pay2').AsString;
+      //oSheet.Cells[row,12] := AdoDataSet1.FieldByName('Night_Diff_Pay2').AsString;
+      //oSheet.Cells[row,13] := AdoDataSet1.FieldByName('nd_holiday').AsString;
+      //oSheet.Cells[row,14] := AdoDataSet1.FieldByName('nd_dayoff').AsString;
+      oSheet.Cells[row,6] := AdoDataSet1.FieldByName('Other_Earn_Bef_Tax').AsString;
+      oSheet.Cells[row,7] := AdoDataSet1.FieldByName('Other_Ded_Bef_Tax').AsString;
+      //oSheet.Cells[row,17] := AdoDataSet1.FieldByName('Gross_Pay').AsString;
+      //oSheet.Cells[row,18] := AdoDataSet1.FieldByName('With_Tax').AsString;
+      //oSheet.Cells[row,19] := AdoDataSet1.FieldByName('SSS_EE').AsString;
+      //oSheet.Cells[row,20] := AdoDataSet1.FieldByName('MPF_EE').AsString;
+      //oSheet.Cells[row,21] := AdoDataSet1.FieldByName('PhilHealth_EE').AsString;
+      //oSheet.Cells[row,22] := AdoDataSet1.FieldByName('Pagibig_EE').AsString;
+
+
+
+      oSheet.Cells[row,8] := AdoDataSet1.FieldByName('Other_Earn_After_Tax').AsString;
+
+      oSheet.Cells[row,9] := AdoDataSet1.FieldByName('Bonus_UPH').AsString;
+      oSheet.Cells[row,10] := AdoDataSet1.FieldByName('Bonus_Quality').AsString;
+      oSheet.Cells[row,11] := AdoDataSet1.FieldByName('Bonus_Retention').AsString;
+      //oSheet.Cells[row,28] := AdoDataSet1.FieldByName('Bonus_Attendance').AsString;
+      //oSheet.Cells[row,29] := AdoDataSet1.FieldByName('Bonus_PerfectAttendance').AsString;
+      oSheet.Cells[row,12] := AdoDataSet1.FieldByName('Bonus_Others').AsString;
+      //oSheet.Cells[row,31] := AdoDataSet1.FieldByName('Bonus_Training').AsString;
+      oSheet.Cells[row,13] := AdoDataSet1.FieldByName('Bonus_FreeField1').AsString;
+
+      //oSheet.Cells[row,33] := AdoDataSet1.FieldByName('Other_Ded1_AfterTax').AsString;
+      //oSheet.Cells[row,34] := AdoDataSet1.FieldByName('Other_Ded2_AfterTax').AsString;
+      //oSheet.Cells[row,35] := AdoDataSet1.FieldByName('Other_Ded3_AfterTax').AsString;
+      //oSheet.Cells[row,36] := AdoDataSet1.FieldByName('Other_Ded4_AfterTax').AsString;
+      //oSheet.Cells[row,37] := AdoDataSet1.FieldByName('Other_Ded5_AfterTax').AsString;
+      //oSheet.Cells[row,38] := AdoDataSet1.FieldByName('Other_Ded6_AfterTax').AsString;
+      //oSheet.Cells[row,39] := AdoDataSet1.FieldByName('Other_Ded7_AfterTax').AsString;
+
+      //oSheet.Cells[row,40] := AdoDataSet1.FieldByName('SB_CashAdvance').AsString;
+
+      oSheet.Cells[row,14] := AdoDataSet1.FieldByName('Gross_Pay').AsString;
+      oSheet.Cells[row,15] := AdoDataSet1.FieldByName('With_Tax').AsString;
+
+      oSheet.Cells[row,16] := AdoDataSet1.FieldByName('Total_Ded').AsString;
+      oSheet.Cells[row,17] := AdoDataSet1.FieldByName('Net_Pay').AsString;
+
+      {sTempAtmNumber := AdoDataSet1.FieldByName('Atm_Number').AsString;
+      if Length(sTempAtmNumber) > 0 then
+      begin
+        sTempAtmNumber := Copy(sTempAtmNumber, 4);
+
+        oSheet.Cells[row,100] := '428';
+        oSheet.Cells[row,101] := sTempAtmNumber;
+
+        oSheet.Cells[row,43] := '=CONCATENATE(CV'+IntToStr(row)+',CW'+IntToStr(row)+')';;
+      end;}
+
+      //oSheet.Cells[row,43] := AdoDataSet1.FieldByName('Atm_Number').AsString;
+      //oSheet.Cells[row,44] := AdoDataSet1.FieldByName('wATM').AsString;
+      oSheet.Cells[row,18] := AdoDataSet1.FieldByName('SSS_EE').AsString;
+      oSheet.Cells[row,19] := AdoDataSet1.FieldByName('SSS_ER').AsString;
+      //oSheet.Cells[row,46] := AdoDataSet1.FieldByName('ECC_ER').AsString;
+      //oSheet.Cells[row,47] := AdoDataSet1.FieldByName('MPF_ER').AsString;
+      //oSheet.Cells[row,48] := AdoDataSet1.FieldByName('PhilHealth_ER').AsString;
+      //oSheet.Cells[row,49] := AdoDataSet1.FieldByName('Pagibig_ER').AsString;
+
+      oSheet.Cells[row,20] := AdoDataSet1.FieldByName('MP2_EE').AsString;
+      oSheet.Cells[row,21] := AdoDataSet1.FieldByName('MP2_ER').AsString;
+      //oSheet.Cells[row,51] := AdoDataSet1.FieldByName('YTD_MP2Amount').AsString;
+
+      //oSheet.Cells[row,52] := AdoDataSet1.FieldByName('M13thmo').AsString;
+      //oSheet.Cells[row,53] := AdoDataSet1.FieldByName('YTD_13thMo').AsString;
+      oSheet.Cells[row,22] := AdoDataSet1.FieldByName('TPay_Exp').AsString;
+
+      {//test primary task id if it is not 'admin' or 'financial'
+      if ((AdoDataSet1.FieldByName('Primary_Task_ID').AsString <> 'ADMIN') AND (AdoDataSet1.FieldByName('Primary_Task_ID').AsString <> 'FINANCIAL')) then
+      begin
+
+          oSheet.Columns['BB:BB'].NumberFormat := '0.00%';
+          //oSheet.Range['BB'+IntToStr(row)+':AY'+IntToStr(row)].Font.Color := clRED;
+
+          // hours worked
+          oSheet.Cells[row,56] := StrToFloat(ADODataSet1.FieldByName('TPay_Exp').AsString) / StrToFloat(varAve);
+      end; }
+
+      // get hired date
+      dtDateHired := StrToDateTime(ADODataSet2.FieldByName('Date_Hired').AsString);
+
+      iDateHiredDays := DaysBetween(dtPeriod1, dtDateHired);
+      if iDateHiredDays <= 30 then
+      begin
+        sDateHiredGrouping := 'Less and equal 30 days';
+      end
+      else if iDateHiredDays <= 60 then
+      begin
+        sDateHiredGrouping := 'Less and equal 60 days';
+      end
+      else if iDateHiredDays <= 90 then
+      begin
+        sDateHiredGrouping := 'Less and equal 90 days';
+      end
+      else
+      begin
+        sDateHiredGrouping := 'More than 90 days';
+      end;
+
+      oSheet.Cells[row,23] := sDateHiredGrouping;
+      
+
+      // set background color to green
+      // total payroll expense
+      oSheet.Range['BB'+IntToStr(row)+':BB'+IntToStr(row)].Interior.Color := clLIME;
+
+      //oSheet.Cells[row,56] := StrToFloat(ADODataSet1.FieldByName('hrsWorked').AsString);
+
+      // show employee email
+      oSheet.Cells[row,24] := ADODataSet2.FieldByName('EmpEmail').AsString;
+      oSheet.Cells[row,25] := ADODataSet2.FieldByName('GhCardNumber').AsString;
+
+
+      row := row + 1;
+
+      ADODATASET1.Next;
+    until ADODATASET1.Eof;
+
+    ADODataSet2.Close;
+    ADODATASET1.Close;
+
+    oSheet.Cells[row+1,4] := 'Totals';
+    oSheet.Cells[row+1,5] := '=SUM(E4:E' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,7] := '=SUM(G4:G' + IntToStr(row) + ')'; // holiday pay
+    //oSheet.Cells[row+1,8] := '=SUM(H4:H' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,9] := '=SUM(I4:I' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,10] := '=SUM(J4:J' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,11] := '=SUM(K4:K' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,12] := '=SUM(L4:L' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,13] := '=SUM(M4:M' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,6] := '=SUM(F4:F' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,7] := '=SUM(G4:G' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,16] := '=SUM(P4:P' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,17] := '=SUM(Q4:Q' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,18] := '=SUM(R4:R' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,19] := '=SUM(S4:S' + IntToStr(row) + ')'; // SSS EE
+    //oSheet.Cells[row+1,20] := '=SUM(T4:T' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,21] := '=SUM(U4:U' + IntToStr(row) + ')';
+
+    //oSheet.Cells[row+1,22] := '=SUM(V4:V' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,8] := '=SUM(H4:H' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,9] := '=SUM(I4:I' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,10] := '=SUM(J4:J' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,11] := '=SUM(K4:K' + IntToStr(row) + ')';
+
+    //oSheet.Cells[row+1,28] := '=SUM(AB4:AB' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,29] := '=SUM(AC4:AC' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,12] := '=SUM(L4:L' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,31] := '=SUM(AE4:AE' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,13] := '=SUM(M4:M' + IntToStr(row) + ')';
+
+    // other ded after tax
+    //oSheet.Cells[row+1,33] := '=SUM(AG4:AG' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,34] := '=SUM(AH4:AH' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,35] := '=SUM(AI4:AI' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,36] := '=SUM(AJ4:AJ' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,37] := '=SUM(AK4:AK' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,38] := '=SUM(AL4:AL' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,39] := '=SUM(AM4:AM' + IntToStr(row) + ')';
+
+    //oSheet.Cells[row+1,40] := '=SUM(AN4:AN' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,14] := '=SUM(N4:N' + IntToStr(row) + ')'; // gross
+    oSheet.Cells[row+1,15] := '=SUM(O4:O' + IntToStr(row) + ')'; // tax
+    oSheet.Cells[row+1,16] := '=SUM(P4:P' + IntToStr(row) + ')'; // total ded
+    oSheet.Cells[row+1,17] := '=SUM(Q4:Q' + IntToStr(row) + ')'; // net pay
+
+    // skip two columns for ATM number and with atm?
+
+    oSheet.Cells[row+1,18] := '=SUM(R4:R' + IntToStr(row) + ')'; // SSS EE
+    oSheet.Cells[row+1,19] := '=SUM(S4:S' + IntToStr(row) + ')';  // SSS ER
+    //oSheet.Cells[row+1,46] := '=SUM(AT4:AT' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,47] := '=SUM(AU4:AU' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,48] := '=SUM(AV4:AV' + IntToStr(row) + ')';
+
+    // MP2 employer share / YTD MP2 amount
+    //oSheet.Cells[row+1,49] := '=SUM(AW4:AW' + IntToStr(row) + ')';
+    // MP2 employee share
+    oSheet.Cells[row+1,20] := '=SUM(T4:T' + IntToStr(row) + ')'; //TIER EE
+    oSheet.Cells[row+1,21] := '=SUM(U4:U' + IntToStr(row) + ')';  //TIER ER
+
+    //oSheet.Cells[row+1,51] := '=SUM(AY4:AY' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,52] := '=SUM(AZ4:AZ' + IntToStr(row) + ')';
+    //oSheet.Cells[row+1,53] := '=SUM(BA4:BA' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,22] := '=SUM(V4:V' + IntToStr(row) + ')';
+
+    // skip one row for Percentage
+
+    // FORMATTING //
+    // basic pay - net pay
+    oSheet.Columns['F:V'].Style := 'Comma';
+    // sss er - percentage
+    //oSheet.Columns['AS:BC'].Style := 'Comma';
+    // other earnings before tax
+    oSheet.Columns['F:F'].NumberFormat := '_(* #,##0.00_);[Red]_(* (#,##0.00);_(* ""-""??_);_(@_)';
+    // payroll period cut off header
+    oSheet.Range['A1:B1'].Font.Bold := true;
+    // header
+    oSheet.Range['A3:X3'].Font.Bold := true;
+    // total amount
+    oSheet.Range['E'+IntToStr(row+1)+':V'+IntToStr(row+1)].Font.Bold := true;
+    // all columns
+    oSheet.Columns['A:X'].AutoFit;
+
+    // set background color to green
+    // total payroll expense
+    oSheet.Range['V'+IntToStr(row+1)+':V'+IntToStr(row+1)].Interior.Color := clLIME;
+
+
+    //write average at the bottom of total (rows)
+    ADODATASET1.CommandText := 'SELECT AVG(tPay_Exp) AS Average FROM xPayRep1 WHERE Primary_Task_ID <> ''ADMIN''' +
+        ' AND Primary_Task_ID <> ''FINANCIAL''';
+    ADODATASET1.Open;
+
+    // average
+    oSheet.Cells[row + 3,21] := 'Average';
+    oSheet.Cells[row + 3,22] := ADODATASET1.FieldByName('Average').AsString;
+
+    ADODATASET1.Close;
+
+
+
+
+    // Summary Report 1 //
+    osheet := owb.Sheets[2];
+    osheet.Name := 'Payroll Summary Per Project';
+
+    if (cboProject.Text <> '') then
+      ADODATASET1.CommandText := 'SELECT * FROM xPayRep2 WHERE primary_task_id = ''' +
+        cboProject.Text + ''''
+    else
+      ADODATASET1.CommandText := 'SELECT * FROM xPayRep2';
+
+    ADODATASET1.Open;
+
+
+    row := 1;
+    oSheet.Cells[row,1] := 'Payroll Period';
+    oSheet.Cells[row,2] := DateToStr(DateTimePicker1.Date) + ' - ' + DateToStr(DateTimePicker2.Date);
+    row := 3;
+    oSheet.Cells[row,1] := 'Primary Task ID';
+    oSheet.Cells[row,2] := 'Basic Pay';
+    //oSheet.Cells[row,3] := 'Holiday Pay';
+    //oSheet.Cells[row,4] := 'OT Pay';
+    //oSheet.Cells[row,5] := 'OT Holiday Pay';
+    //oSheet.Cells[row,6] := 'OT DayOff Pay';
+    //oSheet.Cells[row,7] := 'Day Off Pay';
+    //oSheet.Cells[row,8] := 'Night Diff Pay';
+    //oSheet.Cells[row,9] := 'ND Holiday Pay';
+    //oSheet.Cells[row,10] := 'ND DayOff Pay';
+    oSheet.Cells[row,3] := 'Other Earnings Bef. Tax';
+    oSheet.Cells[row,4] := 'Adjustment in Basic Pay';
+    //oSheet.Cells[row,13] := 'Gross Pay';
+    //oSheet.Cells[row,14] := 'With Tax';
+    //oSheet.Cells[row,15] := 'SSS EE';
+    //oSheet.Cells[row,16] := 'MPF EE';
+    //oSheet.Cells[row,17] := 'PhilHealth EE';
+    //oSheet.Cells[row,18] := 'Pagibig EE';
+    //oSheet.Cells[row,19] := 'MP2 EE';
+
+    oSheet.Cells[row,5] := 'Other Earnings After Tax';
+
+    oSheet.Cells[row,6] := 'UPH Bonus';
+    oSheet.Cells[row,7] := 'Quality Bonus';
+    oSheet.Cells[row,8] := 'Retention Bonus';
+    //oSheet.Cells[row,24] := 'Attendance Bonus';
+    //oSheet.Cells[row,25] := 'Perfect Attendance Bonus';
+    oSheet.Cells[row,9] := 'Other Bonus';
+    //oSheet.Cells[row,27] := 'Training Bonus';
+    oSheet.Cells[row,10] := 'FreeField Bonus';
+
+    //oSheet.Cells[row,29] := 'Red Ribbon Advances';
+    //oSheet.Cells[row,30] := 'Cash Advances';
+    //oSheet.Cells[row,31] := 'HDMF Loan';
+    //oSheet.Cells[row,32] := 'SSS Loan';
+    //oSheet.Cells[row,33] := 'HDMF Calamity';
+    //oSheet.Cells[row,34] := 'SSS Calamity';
+    //oSheet.Cells[row,35] := 'Other';
+
+    //oSheet.Cells[row,36] := 'Advances';
+    //oSheet.Cells[row,36] := 'SB Cash Advance';
+
+    oSheet.Cells[row,11] := 'Gross Pay';
+    oSheet.Cells[row,12] := 'With Tax';
+    oSheet.Cells[row,13] := 'Total Ded';
+    oSheet.Cells[row,14] := 'Net Pay';
+
+    oSheet.Cells[row,15] := 'SSS EE';
+    oSheet.Cells[row,16] := 'SSS ER';
+    //oSheet.Cells[row,40] := 'ECC ER';
+    //oSheet.Cells[row,41] := 'MPF ER';
+    //oSheet.Cells[row,42] := 'PhilHealth ER';
+    //oSheet.Cells[row,43] := 'Pagibig ER';
+
+    oSheet.Cells[row,17] := 'MP2 EE';
+    oSheet.Cells[row,18] := 'MP2 ER';
+    //oSheet.Cells[row,45] := 'YTD MP2 Amount';
+
+    //oSheet.Cells[row,46] := '13th Month';
+    //oSheet.Cells[row,47] := 'YTD 13th Month';
+    oSheet.Cells[row,19] := 'Total Payroll Expense';
+    oSheet.Cells[row,20] := 'No. of Employees';
+    oSheet.Cells[row,21] := 'Avg. Pay per Hour';
+    oSheet.Cells[row,22] := 'Average';
+    oSheet.Cells[row,23] := 'Percentage';
+    //oSheet.Cells[row,53] := 'Hours Worked';
+    row := 4;
+
+    //get average
+    ADODataSet2.Close;
+    ADODataSet2.CommandText := 'SELECT AVG(tPay_Exp/No_Emp) AS Average FROM xPayRep2 WHERE Primary_Task_ID <> ''ADMIN''' +
+        ' AND Primary_Task_ID <> ''FINANCIAL''';
+    ADODataSet2.Open;
+
+    varAve := ADODataSet2.FieldByName('Average').AsString;
+
+
+    repeat
+
+      ADODataSet2.Close;
+      ADODataSet2.CommandText := 'SELECT SUM(a.Regular_hours + a.OT) AS tTime ' +
+        'FROM dtaTime_Summary a LEFT OUTER JOIN dtaEmployees b ON a.employee_pin = b.employee_pin ' +
+        'WHERE a.work_date BETWEEN ''' + DateToStr(DateTimePicker1.Date) + ''' AND ''' +
+          DateToStr(DateTimePicker2.Date) + ''' ' +
+        'AND b.primary_task_ID = ''' +ADODataSet1.FieldByName('Primary_task_id').AsString + ''' ' +
+        'AND b.emp_loc = ''' +ADODataSet1.FieldByName('emp_loc').AsString + ''' ';
+
+      ADODataSet2.Open;
+
+
+      Edit2.Text := ADODATASET1.FieldByName('Primary_Task_ID').AsString;
+      Edit2.Refresh;
+
+      oSheet.Cells[row,1] := AdoDataSet1.FieldByName('Primary_Task_ID').AsString;
+      oSheet.Cells[row,2] := AdoDataSet1.FieldByName('Basic_Pay').AsString;
+      //oSheet.Cells[row,3] := AdoDataSet1.FieldByName('Holiday_Pay').AsString;
+      //oSheet.Cells[row,4] := AdoDataSet1.FieldByName('OT_Pay').AsString;
+      //oSheet.Cells[row,5] := AdoDataSet1.FieldByName('OT_Holiday_Pay').AsString;
+      //oSheet.Cells[row,6] := AdoDataSet1.FieldByName('OT_DayOff_Pay').AsString;
+      //oSheet.Cells[row,7] := AdoDataSet1.FieldByName('Day_Off_Pay').AsString;
+      //oSheet.Cells[row,8] := AdoDataSet1.FieldByName('Night_Diff_Pay').AsString;
+      //oSheet.Cells[row,9] := AdoDataSet1.FieldByName('Night_Diff_Holiday_Pay').AsString;
+      //oSheet.Cells[row,10] := AdoDataSet1.FieldByName('Night_Diff_DayOff_Pay').AsString;
+      oSheet.Cells[row,3] := AdoDataSet1.FieldByName('Other_Earn_Bef_Tax').AsString;
+      oSheet.Cells[row,4] := AdoDataSet1.FieldByName('Other_Ded_Bef_Tax').AsString;
+      //oSheet.Cells[row,13] := AdoDataSet1.FieldByName('Gross_Pay').AsString;
+      //oSheet.Cells[row,14] := AdoDataSet1.FieldByName('With_Tax').AsString;
+      //oSheet.Cells[row,15] := AdoDataSet1.FieldByName('SSS_EE').AsString;
+      //oSheet.Cells[row,16] := AdoDataSet1.FieldByName('MPF_EE').AsString;
+      //oSheet.Cells[row,17] := AdoDataSet1.FieldByName('PhilHealth_EE').AsString;
+      //oSheet.Cells[row,18] := AdoDataSet1.FieldByName('Pagibig_EE').AsString;
+      //oSheet.Cells[row,19] := AdoDataSet1.FieldByName('MP2_EE').AsString;
+
+      oSheet.Cells[row,5] := AdoDataSet1.FieldByName('Other_Earn_After_Tax').AsString;
+
+      oSheet.Cells[row,6] := AdoDataSet1.FieldByName('Bonus_UPH').AsString;
+      oSheet.Cells[row,7] := AdoDataSet1.FieldByName('Bonus_Quality').AsString;
+      oSheet.Cells[row,8] := AdoDataSet1.FieldByName('Bonus_Retention').AsString;
+      //oSheet.Cells[row,24] := AdoDataSet1.FieldByName('Bonus_Attendance').AsString;
+      //oSheet.Cells[row,25] := AdoDataSet1.FieldByName('Bonus_PerfectAttendance').AsString;
+      oSheet.Cells[row,9] := AdoDataSet1.FieldByName('Bonus_Others').AsString;
+      //oSheet.Cells[row,27] := AdoDataSet1.FieldByName('Bonus_Training').AsString;
+      oSheet.Cells[row,10] := AdoDataSet1.FieldByName('Bonus_FreeField1').AsString;
+
+      //oSheet.Cells[row,29] := AdoDataSet1.FieldByName('Other_Ded1_AfterTax').AsString;
+      //oSheet.Cells[row,30] := AdoDataSet1.FieldByName('Other_Ded2_AfterTax').AsString;
+      //oSheet.Cells[row,31] := AdoDataSet1.FieldByName('Other_Ded3_AfterTax').AsString;
+      //oSheet.Cells[row,32] := AdoDataSet1.FieldByName('Other_Ded4_AfterTax').AsString;
+      //oSheet.Cells[row,33] := AdoDataSet1.FieldByName('Other_Ded5_AfterTax').AsString;
+      //oSheet.Cells[row,34] := AdoDataSet1.FieldByName('Other_Ded6_AfterTax').AsString;
+      //oSheet.Cells[row,35] := AdoDataSet1.FieldByName('Other_Ded7_AfterTax').AsString;
+
+      //oSheet.Cells[row,36] := AdoDataSet1.FieldByName('SB_CashAdvance').AsString;
+
+      oSheet.Cells[row,11] := AdoDataSet1.FieldByName('Gross_Pay').AsString;
+      oSheet.Cells[row,12] := AdoDataSet1.FieldByName('With_Tax').AsString;
+      oSheet.Cells[row,13] := AdoDataSet1.FieldByName('Total_Ded').AsString;
+      oSheet.Cells[row,14] := AdoDataSet1.FieldByName('Net_Pay').AsString;
+
+      oSheet.Cells[row,15] := AdoDataSet1.FieldByName('SSS_EE').AsString;
+      oSheet.Cells[row,16] := AdoDataSet1.FieldByName('SSS_ER').AsString;
+      //oSheet.Cells[row,40] := AdoDataSet1.FieldByName('ECC_ER').AsString;
+      //oSheet.Cells[row,41] := AdoDataSet1.FieldByName('MPF_ER').AsString;
+      //oSheet.Cells[row,42] := AdoDataSet1.FieldByName('PhilHealth_ER').AsString;
+      //oSheet.Cells[row,43] := AdoDataSet1.FieldByName('Pagibig_ER').AsString;
+
+      oSheet.Cells[row,17] := AdoDataSet1.FieldByName('MP2_EE').AsString;
+      oSheet.Cells[row,18] := AdoDataSet1.FieldByName('MP2_ER').AsString;
+      //oSheet.Cells[row,45] := AdoDataSet1.FieldByName('YTD_MP2Amount').AsString;
+
+      //oSheet.Cells[row,46] := AdoDataSet1.FieldByName('M13thmo').AsString;
+      //oSheet.Cells[row,47] := AdoDataSet1.FieldByName('YTD_13thMo').AsString;
+      oSheet.Cells[row,19] := AdoDataSet1.FieldByName('TPay_Exp').AsString;
+      oSheet.Cells[row,20] := AdoDataSet1.FieldByName('no_emp').AsString;
+
+
+      if (ADODataSet1.FieldByName('hrsWorked').Value > 0) then
+      begin
+        // Avg. Pay per Hour
+        oSheet.Cells[row,21] := FloatToStr(AdoDataSet1.FieldByName('TPay_Exp').Value /
+          ADODataSet1.FieldByName('hrsWorked').Value);
+      end
+      else if (AdoDataSet1.FieldByName('Primary_Task_ID').AsString = 'ADMIN') then
+      begin
+        // Avg. Pay per Hour
+        oSheet.Cells[row,21] := FloatToStr(AdoDataSet1.FieldByName('TPay_Exp').Value /
+          (AdoDataSet1.FieldByName('no_emp').Value * 86));
+      end;
+
+
+      //write average and percentage
+      //test primary task id if it is not 'admin' or 'financial'
+      if ((AdoDataSet1.FieldByName('Primary_Task_ID').AsString <> 'ADMIN') AND (AdoDataSet1.FieldByName('Primary_Task_ID').AsString <> 'FINANCIAL')) then
+      begin
+          // percentage
+          oSheet.Columns['AZ:AZ'].NumberFormat := '0.00%';
+          //oSheet.Range['AR'+IntToStr(row)+':BB'+IntToStr(row)].Font.Color := clRED;
+//          oSheet.Range['AP'+IntToStr(row)+':AY'+IntToStr(row)].Font.Color := clRED;
+          // average / percentage
+          oSheet.Cells[row,22] := StrToFloat(ADODataSet1.FieldByName('TPay_Exp').AsString) / StrToFloat(ADODataSet1.FieldByName('No_Emp').AsString);
+          oSheet.Cells[row,23] := StrToFloat(ADODataSet1.FieldByName('TPay_Exp').AsString) / StrToFloat(ADODataSet1.FieldByName('No_Emp').AsString) / StrToFloat(varAve);
+      end;
+
+      // write down the hours worked
+      // 86 is average hour per pay period
+      if (AdoDataSet1.FieldByName('Primary_Task_ID').AsString = 'ADMIN') then
+        oSheet.Cells[row,23] := FloatToStr(AdoDataSet1.FieldByName('no_emp').Value * 86)
+      else
+        oSheet.Cells[row,23] := StrToFloat(ADODataSet1.FieldByName('hrsWorked').AsString);
+
+
+      if (AdoDataSet1.FieldByName('Primary_Task_ID').AsString = 'ADMIN') then
+      begin
+
+        // set background color to green
+        // payroll total expense
+        oSheet.Range['V'+IntToStr(row)+':V'+IntToStr(row)].Interior.Color := clYELLOW;
+
+        row := row + 2;
+      end
+      else
+      begin
+
+        // set background color to green
+        // payroll total expense
+        oSheet.Range['V'+IntToStr(row)+':V'+IntToStr(row)].Interior.Color := clLIME;
+
+        row := row + 1;
+      end;
+
+      ADODATASET1.Next;
+
+    until ADODATASET1.Eof;
+    ADODATASET1.Close;
+
+    oSheet.Cells[row+1,2] := 'Totals';
+    // basic pay -  no. of employees
+    oSheet.Cells[row+1,2] := '=SUM(B6:B' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,3] := '=SUM(C6:C' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,4] := '=SUM(D6:D' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,5] := '=SUM(E6:E' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,6] := '=SUM(F6:F' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,7] := '=SUM(G6:G' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,8] := '=SUM(H6:H' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,9] := '=SUM(I6:I' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,10] := '=SUM(J6:J' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,11] := '=SUM(K6:K' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,12] := '=SUM(L6:L' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,13] := '=SUM(M6:M' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,14] := '=SUM(N6:N' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,15] := '=SUM(O6:O' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,16] := '=SUM(P6:P' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,17] := '=SUM(Q6:Q' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,18] := '=SUM(R6:R' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,19] := '=SUM(S6:S' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,20] := '=SUM(T6:T' + IntToStr(row) + ')';
+
+    {// bonuses
+    oSheet.Cells[row+1,21] := '=SUM(U6:U' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,22] := '=SUM(V6:V' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,23] := '=SUM(W6:W' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,24] := '=SUM(X6:X' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,25] := '=SUM(Y6:Y' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,26] := '=SUM(Z6:Z' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,27] := '=SUM(AA6:AA' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,28] := '=SUM(AB6:AB' + IntToStr(row) + ')';
+
+    // ded after tax
+    oSheet.Cells[row+1,29] := '=SUM(AC6:AC' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,30] := '=SUM(AD6:AD' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,31] := '=SUM(AE6:AE' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,32] := '=SUM(AF6:AF' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,33] := '=SUM(AG6:AG' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,34] := '=SUM(AH6:AH' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,35] := '=SUM(AI6:AI' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,36] := '=SUM(AJ6:AJ' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,37] := '=SUM(AK6:AK' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,38] := '=SUM(AL6:AL' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,39] := '=SUM(AM6:AM' + IntToStr(row) + ')';  // SSS ER
+    oSheet.Cells[row+1,40] := '=SUM(AN6:AN' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,41] := '=SUM(AO6:AO' + IntToStr(row) + ')';  // MPF ER
+
+    oSheet.Cells[row+1,42] := '=SUM(AP6:AP' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,43] := '=SUM(AQ6:AQ' + IntToStr(row) + ')';
+    // mp2 er and ytd mp2 amount
+    oSheet.Cells[row+1,44] := '=SUM(AR6:AR' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,45] := '=SUM(AS6:AS' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,46] := '=SUM(AT6:AT' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,47] := '=SUM(AU6:AU' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,48] := '=SUM(AV6:AV' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,49] := '=SUM(AW6:AW' + IntToStr(row) + ')';
+    }
+    // FORMATTING //
+    // basic pay - no. of employees
+    oSheet.Columns['B:AW'].Style := 'Comma';
+    // no of employees
+    oSheet.Columns['AW'].Style := 'Comma';
+    // average pay per hour
+    oSheet.Columns['U:U'].NumberFormat := '_(* #,##0.00_);[Red]_(* (#,##0.00);_(* ""-""??_);_(@_)';
+    // average
+    oSheet.Columns['V:V'].NumberFormat := '_(* #,##0.00_);[Red]_(* (#,##0.00);_(* ""-""??_);_(@_)';
+    // other deduction before tax
+    oSheet.Columns['C:C'].NumberFormat := '_(* #,##0.00_);[Red]_(* (#,##0.00);_(* ""-""??_);_(@_)';
+    // payroll cutoff header
+    oSheet.Range['A1:B1'].Font.Bold := true;
+    // header
+    oSheet.Range['A3:W3'].Font.Bold := true;
+    // basic pay - hours worked
+    oSheet.Range['B'+IntToStr(row+1)+':W'+IntToStr(row+1)].Font.Bold := true;
+    // header
+    oSheet.Columns['A:W'].AutoFit;
+
+    // average
+    oSheet.Range['V'+IntToStr(row+1)+':V'+IntToStr(32)].Font.Bold := true;
+    oSheet.Range['V'+IntToStr(row+1)+':V'+IntToStr(32)].Font.Color := clRED;
+
+    // average (bottom) AM-total payroll expense, AN-no. of employees
+    oSheet.Cells[row + 1,22] := '=SUM(S' + IntToStr(row + 1) + '/T' + IntToStr(row + 1) + ')';
+    // hours worked
+    //oSheet.Cells[row+1,53] := '=SUM(BA4:BA' + IntToStr(row) + ')';
+
+    // set background color to green
+    // total payroll expense
+    oSheet.Range['S'+IntToStr(row+1)+':S'+IntToStr(row+1)].Interior.Color := clYELLOW;
+
+    // total payroll expense
+    // add up ADMIN and non-ADMIN total payroll expense
+    oSheet.Cells[row+3,19] := '=SUM(S4+S' + IntToStr(row+1) + ')';
+    oSheet.Range['S'+IntToStr(row+3)+':S'+IntToStr(row+3)].Interior.Color := clWebCornFlowerBlue;
+
+
+
+
+    {
+    // summary report by individual
+    // (will combine 1st and 2nd pay period on 2nd period payroll)
+    osheet := owb.Sheets[3];
+    osheet.Name := monthName + ' ' + sYear + ' PS - Individual';
+
+    //vSQL := 'EXEC PayRep1_Month '+monthNum+','+sYear;
+    vSQL := 'EXEC PayRep1_TwoPayrolls ' + sPeriod1 + ',' + sTempPrevPeriod;
+
+    ADOConnection1.Execute(vSQL);
+
+    if (cboProject.Text <> '') then
+      ADODATASET1.CommandText := 'SELECT * FROM xPayRep1 WHERE primary_task_id = ''' +
+        cboProject.Text + ''''
+    else
+      ADODATASET1.CommandText := 'SELECT * FROM xPayRep1';
+
+    ADODATASET1.Open;
+
+
+    row := 1;
+    oSheet.Cells[row,1] := 'Payroll Month';
+    oSheet.Cells[row,2] := '(' + sTempPrevPeriod + '-' + sPeriod1 + ')';
+    //oSheet.Cells[row,2] := monthName + ' ' + sYear;
+    row := 3;
+    oSheet.Cells[row,1] := 'Employee Name';
+    oSheet.Cells[row,2] := 'Primary Task ID';
+    oSheet.Cells[row,3] := 'Job Position Code';
+    oSheet.Cells[row,4] := 'Hierarchy';
+    oSheet.Cells[row,5] := 'Employee PIN';
+    oSheet.Cells[row,6] := 'Basic Pay';
+    oSheet.Cells[row,7] := 'Holiday Pay';
+    oSheet.Cells[row,8] := 'OT Pay';
+    oSheet.Cells[row,9] := 'OT Holiday Pay';
+    oSheet.Cells[row,10] := 'OT DayOff Pay';
+    oSheet.Cells[row,11] := 'DayOff Pay';
+    oSheet.Cells[row,12] := 'Night Diff Pay';
+    oSheet.Cells[row,13] := 'Night Diff Holiday Pay';
+    oSheet.Cells[row,14] := 'Night Diff DayOff Pay';
+    oSheet.Cells[row,15] := 'Other Earnings Bef. Tax';
+    oSheet.Cells[row,16] := 'Adjustment in Basic Pay';
+    oSheet.Cells[row,17] := 'Gross Pay';
+    oSheet.Cells[row,18] := 'With Tax';
+    oSheet.Cells[row,19] := 'SSS EE';
+    oSheet.Cells[row,20] := 'MPF EE';
+    oSheet.Cells[row,21] := 'PhilHealth EE';
+    oSheet.Cells[row,22] := 'Pagibig EE';
+    oSheet.Cells[row,23] := 'MP2 EE';
+
+    oSheet.Cells[row,24] := 'Other Earnings After Tax';
+
+    oSheet.Cells[row,25] := 'UPH Bonus';
+    oSheet.Cells[row,26] := 'Quality Bonus';
+    oSheet.Cells[row,27] := 'Retention Bonus';
+    oSheet.Cells[row,28] := 'Attendance Bonus';
+    oSheet.Cells[row,29] := 'Perfect Attendance Bonus';
+    oSheet.Cells[row,30] := 'Other Bonus';
+    oSheet.Cells[row,31] := 'Training Bonus';
+    oSheet.Cells[row,32] := 'FreeField Bonus';
+
+    oSheet.Cells[row,33] := 'Red Ribbon Advances';
+    oSheet.Cells[row,34] := 'Cash Advances';
+    oSheet.Cells[row,35] := 'HDMF Loan';
+    oSheet.Cells[row,36] := 'SSS Loan';
+    oSheet.Cells[row,37] := 'HDMF Calamity';
+    oSheet.Cells[row,38] := 'SSS Calamity';
+    oSheet.Cells[row,39] := 'Other';
+
+    oSheet.Cells[row,40] := 'Advances';
+    //oSheet.Cells[row,40] := 'SB Cash Advance';
+
+    oSheet.Cells[row,41] := 'Total Ded';
+    oSheet.Cells[row,42] := 'Net Pay';
+    oSheet.Cells[row,43] := 'Atm Number';
+    oSheet.Cells[row,44] := 'With ATM?';
+    oSheet.Cells[row,45] := 'SSS ER';
+    oSheet.Cells[row,46] := 'ECC ER';
+    oSheet.Cells[row,47] := 'MPF ER';
+    oSheet.Cells[row,48] := 'PhilHealth ER';
+    oSheet.Cells[row,49] := 'Pagibig ER';
+    oSheet.Cells[row,50] := 'MP2 ER';
+    oSheet.Cells[row,51] := 'YTD MP2 Amount';
+
+    oSheet.Cells[row,52] := '13th Month';
+    oSheet.Cells[row,53] := 'YTD 13th Month';
+    oSheet.Cells[row,54] := 'Total Payroll Expense';
+    oSheet.Cells[row,55] := 'Percentage';
+    oSheet.Cells[row,56] := 'Hours Worked';
+    row := 4;
+
+
+    //get average
+    ADODataSet2.Close;
+    ADODataSet2.CommandText := 'SELECT AVG(tPay_Exp) AS Average FROM xPayRep1 WHERE Primary_Task_ID <> ''ADMIN''' +
+        ' AND Primary_Task_ID <> ''FINANCIAL''';
+    ADODataSet2.Open;
+
+    varAve := ADODataSet2.FieldByName('Average').AsString;
+
+    repeat
+      Edit2.Text := ADODATASET1.FieldByName('Employee_Name').AsString;
+      Edit2.Refresh;
+      oSheet.Cells[row,1] := ADODATASET1.FieldByName('Employee_Name').AsString;
+      oSheet.Cells[row,2] := ADODATASET1.FieldByName('Primary_Task_ID').AsString;
+      oSheet.Cells[row,3] := ADODATASET1.FieldByName('Job_Position_Code').AsString;
+      oSheet.Cells[row,4] := ADODATASET1.FieldByName('Hierarchy').AsString;
+      oSheet.Cells[row,5] := ADODATASET1.FieldByName('Employee_PIN').AsString;
+      oSheet.Cells[row,6] := ADODATASET1.FieldByName('Basic_Pay').AsString;
+      oSheet.Cells[row,7] := ADODATASET1.FieldByName('Holiday_Pay').AsString;
+      oSheet.Cells[row,8] := ADODATASET1.FieldByName('OT_Pay2').AsString;
+      oSheet.Cells[row,9] := ADODATASET1.FieldByName('ot_holiday').AsString;
+      oSheet.Cells[row,10] := ADODATASET1.FieldByName('ot_dayoff').AsString;
+      oSheet.Cells[row,11] := ADODATASET1.FieldByName('Day_Off_Pay2').AsString;
+      oSheet.Cells[row,12] := ADODATASET1.FieldByName('Night_Diff_Pay2').AsString;
+      oSheet.Cells[row,13] := ADODATASET1.FieldByName('nd_holiday').AsString;
+      oSheet.Cells[row,14] := ADODATASET1.FieldByName('nd_dayoff').AsString;
+      oSheet.Cells[row,15] := ADODATASET1.FieldByName('Other_Earn_Bef_Tax').AsString;
+      oSheet.Cells[row,16] := ADODATASET1.FieldByName('Other_Ded_Bef_Tax').AsString;
+      oSheet.Cells[row,17] := ADODATASET1.FieldByName('Gross_Pay').AsString;
+      oSheet.Cells[row,18] := ADODATASET1.FieldByName('With_Tax').AsString;
+      oSheet.Cells[row,19] := ADODATASET1.FieldByName('SSS_EE').AsString;
+      oSheet.Cells[row,20] := ADODATASET1.FieldByName('MPF_EE').AsString;
+      oSheet.Cells[row,21] := ADODATASET1.FieldByName('PhilHealth_EE').AsString;
+      oSheet.Cells[row,22] := ADODATASET1.FieldByName('Pagibig_EE').AsString;
+      oSheet.Cells[row,23] := ADODATASET1.FieldByName('MP2_EE').AsString;
+
+      oSheet.Cells[row,24] := ADODATASET1.FieldByName('Other_Earn_After_Tax').AsString;
+
+      oSheet.Cells[row,25] := AdoDataSet1.FieldByName('Bonus_UPH').AsString;
+      oSheet.Cells[row,26] := AdoDataSet1.FieldByName('Bonus_Quality').AsString;
+      oSheet.Cells[row,27] := AdoDataSet1.FieldByName('Bonus_Retention').AsString;
+      oSheet.Cells[row,28] := AdoDataSet1.FieldByName('Bonus_Attendance').AsString;
+      oSheet.Cells[row,29] := AdoDataSet1.FieldByName('Bonus_PerfectAttendance').AsString;
+      oSheet.Cells[row,30] := AdoDataSet1.FieldByName('Bonus_Others').AsString;
+      oSheet.Cells[row,31] := AdoDataSet1.FieldByName('Bonus_Training').AsString;
+      oSheet.Cells[row,32] := AdoDataSet1.FieldByName('Bonus_FreeField1').AsString;
+
+      oSheet.Cells[row,33] := AdoDataSet1.FieldByName('Other_Ded1_AfterTax').AsString;
+      oSheet.Cells[row,34] := AdoDataSet1.FieldByName('Other_Ded2_AfterTax').AsString;
+      oSheet.Cells[row,35] := AdoDataSet1.FieldByName('Other_Ded3_AfterTax').AsString;
+      oSheet.Cells[row,36] := AdoDataSet1.FieldByName('Other_Ded4_AfterTax').AsString;
+      oSheet.Cells[row,37] := AdoDataSet1.FieldByName('Other_Ded5_AfterTax').AsString;
+      oSheet.Cells[row,38] := AdoDataSet1.FieldByName('Other_Ded6_AfterTax').AsString;
+      oSheet.Cells[row,39] := AdoDataSet1.FieldByName('Other_Ded7_AfterTax').AsString;
+
+      oSheet.Cells[row,40] := AdoDataSet1.FieldByName('SB_CashAdvance').AsString;
+
+      oSheet.Cells[row,41] := ADODATASET1.FieldByName('Total_Ded').AsString;
+      oSheet.Cells[row,42] := ADODATASET1.FieldByName('Net_Pay').AsString;
+      oSheet.Cells[row,43] := ADODATASET1.FieldByName('Atm_Number').AsString;
+      oSheet.Cells[row,44] := ADODATASET1.FieldByName('wATM').AsString;
+      oSheet.Cells[row,45] := ADODATASET1.FieldByName('SSS_ER').AsString;
+      oSheet.Cells[row,46] := ADODATASET1.FieldByName('ECC_ER').AsString;
+      oSheet.Cells[row,47] := ADODATASET1.FieldByName('MPF_ER').AsString;
+      oSheet.Cells[row,48] := ADODATASET1.FieldByName('PhilHealth_ER').AsString;
+      oSheet.Cells[row,49] := ADODATASET1.FieldByName('Pagibig_ER').AsString;
+      oSheet.Cells[row,50] := ADODATASET1.FieldByName('MP2_ER').AsString;
+      oSheet.Cells[row,51] := ADODATASET1.FieldByName('YTD_MP2Amount').AsString;
+
+      oSheet.Cells[row,52] := ADODATASET1.FieldByName('M13thmo').AsString;
+      oSheet.Cells[row,53] := ADODATASET1.FieldByName('YTD_13thMo').AsString;
+      oSheet.Cells[row,54] := ADODATASET1.FieldByName('TPay_Exp').AsString;
+
+      //test primary task id if it is not 'admin' or 'financial'
+      if ((ADODATASET1.FieldByName('Primary_Task_ID').AsString <> 'ADMIN') AND (ADODATASET1.FieldByName('Primary_Task_ID').AsString <> 'FINANCIAL')) then
+      begin
+          // percentage
+          oSheet.Columns['BC:BC'].NumberFormat := '0.00%';
+          oSheet.Range['BC'+IntToStr(row)+':BC'+IntToStr(row)].Font.Color := clRED;
+
+          oSheet.Cells[row,55] := StrToFloat(ADODATASET1.FieldByName('TPay_Exp').AsString) / StrToFloat(varAve);
+      end;
+
+      // set background color to green
+      // total payroll expense
+      oSheet.Range['BB'+IntToStr(row)+':BB'+IntToStr(row)].Interior.Color := clLIME;
+
+      // hours worked
+      oSheet.Cells[row,56] := StrToFloat(ADODATASET1.FieldByName('hrsWorked').AsString);
+
+
+      row := row + 1;
+
+      ADODATASET1.Next;
+    until ADODATASET1.Eof;
+
+    ADODataSet2.Close;
+    ADODATASET1.Close;
+
+    oSheet.Cells[row+1,5] := 'Totals';
+    // basic pay - net pay
+    oSheet.Cells[row+1,6] := '=SUM(F4:F' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,7] := '=SUM(G4:G' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,8] := '=SUM(H4:H' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,9] := '=SUM(I4:I' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,10] := '=SUM(J4:J' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,11] := '=SUM(K4:K' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,12] := '=SUM(L4:L' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,13] := '=SUM(M4:M' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,14] := '=SUM(N4:N' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,15] := '=SUM(O4:O' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,16] := '=SUM(P4:P' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,17] := '=SUM(Q4:Q' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,18] := '=SUM(R4:R' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,19] := '=SUM(S4:S' + IntToStr(row) + ')';  // SSS EE
+    oSheet.Cells[row+1,20] := '=SUM(T4:T' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,21] := '=SUM(U4:U' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,22] := '=SUM(V4:V' + IntToStr(row) + ')';
+    // MP2 EE
+    oSheet.Cells[row+1,23] := '=SUM(W4:W' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,24] := '=SUM(X4:X' + IntToStr(row) + ')';
+
+    // bonuses
+    oSheet.Cells[row+1,25] := '=SUM(Y4:Y' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,26] := '=SUM(Z4:Z' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,27] := '=SUM(AA4:ZZ' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,28] := '=SUM(AB4:AB' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,29] := '=SUM(AC4:AD' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,30] := '=SUM(AD4:AD' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,31] := '=SUM(AE4:AE' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,32] := '=SUM(AF4:AF' + IntToStr(row) + ')';
+
+    // ded after tax
+    oSheet.Cells[row+1,33] := '=SUM(AG4:AG' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,34] := '=SUM(AH4:AH' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,35] := '=SUM(AI4:AI' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,36] := '=SUM(AJ4:AJ' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,37] := '=SUM(AK4:AK' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,38] := '=SUM(AL4:AL' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,39] := '=SUM(AM4:AM' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,40] := '=SUM(AN4:AN' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,41] := '=SUM(AO4:AO' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,42] := '=SUM(AP4:AP' + IntToStr(row) + ')';
+
+    // skip two columns
+
+    // sss er - hours worked
+    oSheet.Cells[row+1,45] := '=SUM(AS4:AS' + IntToStr(row) + ')';  // SSS ER
+
+    oSheet.Cells[row+1,46] := '=SUM(AT4:AT' + IntToStr(row) + ')'; // SSS EC ER
+    oSheet.Cells[row+1,47] := '=SUM(AU4:AU' + IntToStr(row) + ')'; // MPF ER
+    oSheet.Cells[row+1,48] := '=SUM(AV4:AV' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,49] := '=SUM(AW4:AW' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,50] := '=SUM(AX4:AX' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,51] := '=SUM(AY4:AY' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,52] := '=SUM(AZ4:AZ' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,53] := '=SUM(BA4:BA' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,54] := '=SUM(BB4:BB' + IntToStr(row) + ')';
+
+    // FORMATTING //
+    // basic pay - net pay
+    oSheet.Columns['F:AP'].Style := 'Comma';
+    // sss er - percentage
+    oSheet.Columns['AR:BC'].Style := 'Comma';
+    // other earnings before tax
+    oSheet.Columns['O:O'].NumberFormat := '_(* #,##0.00_);[Red]_(* (#,##0.00);_(* ""-""??_);_(@_)';
+
+    // payroll period header
+    oSheet.Range['A1:B1'].Font.Bold := true;
+    // header
+    oSheet.Range['A3:BD3'].Font.Bold := true;
+    // basic pay - hours worked
+    oSheet.Range['E'+IntToStr(row+1)+':BD'+IntToStr(row+1)].Font.Bold := true;
+    // header
+    oSheet.Columns['A:BD'].AutoFit;
+
+    // set background color to green
+    // total payroll expense
+    oSheet.Range['BB'+IntToStr(row+1)+':BB'+IntToStr(row+1)].Interior.Color := clLIME;
+
+
+    //write average at the bottom of total (rows)
+    ADODATASET1.CommandText := 'SELECT AVG(tPay_Exp) AS Average FROM xPayRep1 WHERE Primary_Task_ID <> ''ADMIN''' +
+        ' AND Primary_Task_ID <> ''FINANCIAL''';
+    ADODATASET1.Open;
+
+    // below ytd 13th month pay and total payroll expense
+    // average
+    oSheet.Cells[row + 3,53] := 'Average';
+    oSheet.Cells[row + 3,54] := ADODATASET1.FieldByName('Average').AsString;
+
+    ADODATASET1.Close;
+
+
+
+
+    // Summary Report 1 //
+    osheet := owb.Sheets[4];
+    osheet.Name := monthName + ' ' + sYear + ' PS';
+
+    // execute stored procedure
+    //vSQL := 'EXEC PayRep1_Month '+monthNum+','+sYear;
+    vSQL := 'EXEC PayRep1_TwoPayrolls ' + sPeriod1 + ',' + sTempPrevPeriod;
+
+    ADOConnection1.Execute(vSQL);
+
+
+    if (cboProject.Text <> '') then
+      ADODATASET1.CommandText := 'SELECT * FROM xPayRep2 WHERE primary_task_id = ''' +
+        cboProject.Text + ''''
+    else
+      ADODATASET1.CommandText := 'SELECT * FROM xPayRep2';
+
+    ADODATASET1.Open;
+
+
+    row := 1;
+    oSheet.Cells[row,1] := 'Payroll Month';
+    oSheet.Cells[row,2] := '(' + sTempPrevPeriod + '-' + sPeriod1 + ')';
+    //oSheet.Cells[row,2] := '''' + monthName + ' ' + sYear;
+    row := 3;
+    oSheet.Cells[row,1] := 'Primary Task ID';
+    oSheet.Cells[row,2] := 'Basic Pay';
+    oSheet.Cells[row,3] := 'Holiday Pay';
+    oSheet.Cells[row,4] := 'OT Pay';
+    oSheet.Cells[row,5] := 'OT Holiday Pay';
+    oSheet.Cells[row,6] := 'OT DayOff Pay';
+    oSheet.Cells[row,7] := 'Day Off Pay';
+    oSheet.Cells[row,8] := 'Night Diff Pay';
+    oSheet.Cells[row,9] := 'ND Holiday Pay';
+    oSheet.Cells[row,10] := 'ND DayOff Pay';
+    oSheet.Cells[row,11] := 'Other Earnings Bef. Tax';
+    oSheet.Cells[row,12] := 'Adjustment in Basic Pay';
+    oSheet.Cells[row,13] := 'Gross Pay';
+    oSheet.Cells[row,14] := 'With Tax';
+    oSheet.Cells[row,15] := 'SSS EE';
+    oSheet.Cells[row,16] := 'MPF EE';
+    oSheet.Cells[row,17] := 'PhilHealth EE';
+    oSheet.Cells[row,18] := 'Pagibig EE';
+    oSheet.Cells[row,19] := 'MP2 EE';
+
+    oSheet.Cells[row,20] := 'Other Earnings After Tax';
+
+    oSheet.Cells[row,21] := 'UPH Bonus';
+    oSheet.Cells[row,22] := 'Quality Bonus';
+    oSheet.Cells[row,23] := 'Retention Bonus';
+    oSheet.Cells[row,24] := 'Attendance Bonus';
+    oSheet.Cells[row,25] := 'Perfect Attendance Bonus';
+    oSheet.Cells[row,26] := 'Other Bonus';
+    oSheet.Cells[row,27] := 'Training Bonus';
+    oSheet.Cells[row,28] := 'FreeField Bonus';
+
+    oSheet.Cells[row,29] := 'Red Ribbon Advances';
+    oSheet.Cells[row,30] := 'Cash Advances';
+    oSheet.Cells[row,31] := 'HDMF Loan';
+    oSheet.Cells[row,32] := 'SSS Loan';
+    oSheet.Cells[row,33] := 'HDMF Calamity';
+    oSheet.Cells[row,34] := 'SSS Calamity';
+    oSheet.Cells[row,35] := 'Other';
+
+    oSheet.Cells[row,36] := 'Advances';
+    //oSheet.Cells[row,36] := 'SB Cash Advance';
+
+    oSheet.Cells[row,37] := 'Total Ded';
+    oSheet.Cells[row,38] := 'Net Pay';
+    oSheet.Cells[row,39] := 'SSS ER';
+    oSheet.Cells[row,40] := 'ECC ER';
+    oSheet.Cells[row,41] := 'MPF ER';
+    oSheet.Cells[row,42] := 'PhilHealth ER';
+    oSheet.Cells[row,43] := 'Pagibig ER';
+    oSheet.Cells[row,44] := 'MP2 ER';
+    oSheet.Cells[row,45] := 'YTD MP2 Amount';
+
+    oSheet.Cells[row,46] := '13th Month';
+    oSheet.Cells[row,47] := 'YTD 13th Month';
+    oSheet.Cells[row,48] := 'Total Payroll Expense';
+    oSheet.Cells[row,49] := 'No. of Employees';
+    oSheet.Cells[row,50] := 'Avg. Pay per Hour';
+    oSheet.Cells[row,51] := 'Average';
+    oSheet.Cells[row,52] := 'Percentage';
+    oSheet.Cells[row,53] := 'Hours Worked';
+    row := 4;
+
+    //get average
+    ADODataSet2.Close;
+    ADODataSet2.CommandText := 'SELECT AVG(tPay_Exp/No_Emp) AS Average FROM xPayRep2 WHERE Primary_Task_ID <> ''ADMIN''' +
+        ' AND Primary_Task_ID <> ''FINANCIAL''';
+    ADODataSet2.Open;
+
+    varAve := ADODataSet2.FieldByName('Average').AsString;
+
+
+    repeat
+
+      ADODataSet2.Close;
+      ADODataSet2.CommandText := 'SELECT SUM(a.Regular_hours + a.OT) AS tTime ' +
+        'FROM dtaTime_Summary a LEFT OUTER JOIN dtaEmployees b ON a.employee_pin = b.employee_pin ' +
+        'WHERE a.work_date BETWEEN ''' + DateToStr(DateTimePicker1.Date) + ''' AND ''' +
+        DateToStr(DateTimePicker2.Date) + ''' AND b.primary_task_ID = ''' +
+        ADODataSet1.FieldByName('Primary_task_id').AsString + ''' AND b.emp_loc = ''' +
+        ADODataSet1.FieldByName('emp_loc').AsString + '''';
+      ADODataSet2.Open;
+
+
+      Edit2.Text := ADODATASET1.FieldByName('Primary_Task_ID').AsString;
+      Edit2.Refresh;
+
+      oSheet.Cells[row,1] := AdoDataSet1.FieldByName('Primary_Task_ID').AsString;
+      oSheet.Cells[row,2] := AdoDataSet1.FieldByName('Basic_Pay').AsString;
+      oSheet.Cells[row,3] := AdoDataSet1.FieldByName('Holiday_Pay').AsString;
+      oSheet.Cells[row,4] := AdoDataSet1.FieldByName('OT_Pay').AsString;
+      oSheet.Cells[row,5] := AdoDataSet1.FieldByName('OT_Holiday_Pay').AsString;
+      oSheet.Cells[row,6] := AdoDataSet1.FieldByName('OT_DayOff_Pay').AsString;
+      oSheet.Cells[row,7] := AdoDataSet1.FieldByName('Day_Off_Pay').AsString;
+      oSheet.Cells[row,8] := AdoDataSet1.FieldByName('Night_Diff_Pay').AsString;
+      oSheet.Cells[row,9] := AdoDataSet1.FieldByName('Night_Diff_Holiday_Pay').AsString;
+      oSheet.Cells[row,10] := AdoDataSet1.FieldByName('Night_Diff_DayOff_Pay').AsString;
+      oSheet.Cells[row,11] := AdoDataSet1.FieldByName('Other_Earn_Bef_Tax').AsString;
+      oSheet.Cells[row,12] := AdoDataSet1.FieldByName('Other_Ded_Bef_Tax').AsString;
+      oSheet.Cells[row,13] := AdoDataSet1.FieldByName('Gross_Pay').AsString;
+      oSheet.Cells[row,14] := AdoDataSet1.FieldByName('With_Tax').AsString;
+      oSheet.Cells[row,15] := AdoDataSet1.FieldByName('SSS_EE').AsString;
+      oSheet.Cells[row,16] := AdoDataSet1.FieldByName('MPF_EE').AsString;
+      oSheet.Cells[row,17] := AdoDataSet1.FieldByName('PhilHealth_EE').AsString;
+      oSheet.Cells[row,18] := AdoDataSet1.FieldByName('Pagibig_EE').AsString;
+      oSheet.Cells[row,19] := AdoDataSet1.FieldByName('MP2_EE').AsString;
+
+      oSheet.Cells[row,20] := AdoDataSet1.FieldByName('Other_Earn_After_Tax').AsString;
+
+      oSheet.Cells[row,21] := AdoDataSet1.FieldByName('Bonus_UPH').AsString;
+      oSheet.Cells[row,22] := AdoDataSet1.FieldByName('Bonus_Quality').AsString;
+      oSheet.Cells[row,23] := AdoDataSet1.FieldByName('Bonus_Retention').AsString;
+      oSheet.Cells[row,24] := AdoDataSet1.FieldByName('Bonus_Attendance').AsString;
+      oSheet.Cells[row,25] := AdoDataSet1.FieldByName('Bonus_PerfectAttendance').AsString;
+      oSheet.Cells[row,26] := AdoDataSet1.FieldByName('Bonus_Others').AsString;
+      oSheet.Cells[row,27] := AdoDataSet1.FieldByName('Bonus_Training').AsString;
+      oSheet.Cells[row,28] := AdoDataSet1.FieldByName('Bonus_FreeField1').AsString;
+
+      oSheet.Cells[row,29] := AdoDataSet1.FieldByName('Other_Ded1_AfterTax').AsString;
+      oSheet.Cells[row,30] := AdoDataSet1.FieldByName('Other_Ded2_AfterTax').AsString;
+      oSheet.Cells[row,31] := AdoDataSet1.FieldByName('Other_Ded3_AfterTax').AsString;
+      oSheet.Cells[row,32] := AdoDataSet1.FieldByName('Other_Ded4_AfterTax').AsString;
+      oSheet.Cells[row,33] := AdoDataSet1.FieldByName('Other_Ded5_AfterTax').AsString;
+      oSheet.Cells[row,34] := AdoDataSet1.FieldByName('Other_Ded6_AfterTax').AsString;
+      oSheet.Cells[row,35] := AdoDataSet1.FieldByName('Other_Ded7_AfterTax').AsString;
+
+      oSheet.Cells[row,36] := AdoDataSet1.FieldByName('SB_CashAdvance').AsString;
+
+      oSheet.Cells[row,37] := AdoDataSet1.FieldByName('Total_Ded').AsString;
+      oSheet.Cells[row,38] := AdoDataSet1.FieldByName('Net_Pay').AsString;
+      oSheet.Cells[row,39] := AdoDataSet1.FieldByName('SSS_ER').AsString;
+      oSheet.Cells[row,40] := AdoDataSet1.FieldByName('ECC_ER').AsString;
+      oSheet.Cells[row,41] := AdoDataSet1.FieldByName('MPF_ER').AsString;
+      oSheet.Cells[row,42] := AdoDataSet1.FieldByName('PhilHealth_ER').AsString;
+      oSheet.Cells[row,43] := AdoDataSet1.FieldByName('Pagibig_ER').AsString;
+      oSheet.Cells[row,44] := AdoDataSet1.FieldByName('MP2_ER').AsString;
+      oSheet.Cells[row,45] := AdoDataSet1.FieldByName('YTD_MP2Amount').AsString;
+
+      oSheet.Cells[row,46] := AdoDataSet1.FieldByName('M13thmo').AsString;
+      oSheet.Cells[row,47] := AdoDataSet1.FieldByName('YTD_13thMo').AsString;
+      oSheet.Cells[row,48] := AdoDataSet1.FieldByName('TPay_Exp').AsString;
+      oSheet.Cells[row,49] := AdoDataSet1.FieldByName('no_emp').AsString;
+
+      // avg per hour
+      if (ADODataSet1.FieldByName('hrsWorked').Value > 0) then
+      begin
+          oSheet.Cells[row,50] := FloatToStr(AdoDataSet1.FieldByName('TPay_Exp').Value /
+            ADODataSet1.FieldByName('hrsWorked').Value);
+      end
+      else if (AdoDataSet1.FieldByName('Primary_Task_ID').AsString = 'ADMIN') then
+      begin
+        oSheet.Cells[row,50] := FloatToStr(AdoDataSet1.FieldByName('TPay_Exp').Value /
+          (AdoDataSet1.FieldByName('no_emp').Value * 86));
+      end;
+
+
+      //write average and percentage
+      //test primary task id if it is not 'admin' or 'financial'
+      if ((AdoDataSet1.FieldByName('Primary_Task_ID').AsString <> 'ADMIN') AND (AdoDataSet1.FieldByName('Primary_Task_ID').AsString <> 'FINANCIAL')) then
+      begin
+
+          oSheet.Columns['AY:AZ'].NumberFormat := '0.00%';
+          oSheet.Range['AZ'+IntToStr(row)+':AZ'+IntToStr(row)].Font.Color := clRED;
+
+          oSheet.Cells[row,51] := StrToFloat(ADODataSet1.FieldByName('TPay_Exp').AsString) / StrToFloat(ADODataSet1.FieldByName('No_Emp').AsString);
+          oSheet.Cells[row,52] := StrToFloat(ADODataSet1.FieldByName('TPay_Exp').AsString) / StrToFloat(ADODataSet1.FieldByName('No_Emp').AsString) / StrToFloat(varAve);
+      end;
+
+      // write down the hours worked
+      // 86 is average hour per pay period
+      if (AdoDataSet1.FieldByName('Primary_Task_ID').AsString = 'ADMIN') then
+        oSheet.Cells[row,53] := FloatToStr(AdoDataSet1.FieldByName('no_emp').Value * 172)
+      else
+        oSheet.Cells[row,53] := StrToFloat(ADODataSet1.FieldByName('hrsWorked').AsString);
+
+
+      if (AdoDataSet1.FieldByName('Primary_Task_ID').AsString = 'ADMIN') then
+      begin
+
+        // set background color to green
+        oSheet.Range['AV'+IntToStr(row)+':AV'+IntToStr(row)].Interior.Color := clYELLOW;
+
+        row := row + 2;
+      end
+      else
+      begin
+
+        // set background color to green
+        oSheet.Range['AV'+IntToStr(row)+':AV'+IntToStr(row)].Interior.Color := clLIME;
+
+        row := row + 1;
+      end;
+
+      ADODATASET1.Next;
+
+    until ADODATASET1.Eof;
+    ADODATASET1.Close;
+
+    oSheet.Cells[row+1,1] := 'Totals';
+    oSheet.Cells[row+1,2] := '=SUM(B6:B' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,3] := '=SUM(C6:C' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,4] := '=SUM(D6:D' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,5] := '=SUM(E6:E' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,6] := '=SUM(F6:F' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,7] := '=SUM(G6:G' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,8] := '=SUM(H6:H' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,9] := '=SUM(I6:I' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,10] := '=SUM(J6:J' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,11] := '=SUM(K6:K' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,12] := '=SUM(L6:L' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,13] := '=SUM(M6:M' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,14] := '=SUM(N6:N' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,15] := '=SUM(O6:O' + IntToStr(row) + ')'; // SSS EE
+    oSheet.Cells[row+1,16] := '=SUM(P6:P' + IntToStr(row) + ')'; // MPF EE
+    oSheet.Cells[row+1,17] := '=SUM(Q6:Q' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,18] := '=SUM(R6:R' + IntToStr(row) + ')';
+    // MP2 EE
+    oSheet.Cells[row+1,19] := '=SUM(S6:S' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,20] := '=SUM(T6:T' + IntToStr(row) + ')';
+
+    // bonuses
+    oSheet.Cells[row+1,21] := '=SUM(U6:U' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,22] := '=SUM(V6:V' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,23] := '=SUM(W6:W' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,24] := '=SUM(X6:X' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,25] := '=SUM(Y6:Y' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,26] := '=SUM(Z6:Z' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,27] := '=SUM(AA6:AA' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,28] := '=SUM(AB6:AB' + IntToStr(row) + ')';
+
+    // ded after tax
+    oSheet.Cells[row+1,29] := '=SUM(AC6:AC' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,30] := '=SUM(AD6:AD' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,31] := '=SUM(AE6:AE' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,32] := '=SUM(AF6:AF' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,33] := '=SUM(AG6:AG' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,34] := '=SUM(AH6:AH' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,35] := '=SUM(AI6:AI' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,36] := '=SUM(AJ6:AJ' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,37] := '=SUM(AK6:AK' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,38] := '=SUM(AL6:AL' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,39] := '=SUM(AM6:AM' + IntToStr(row) + ')';  // SSS ER
+    oSheet.Cells[row+1,40] := '=SUM(AN6:AN' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,41] := '=SUM(AO6:AO' + IntToStr(row) + ')'; // MPF ER
+
+    oSheet.Cells[row+1,42] := '=SUM(AP6:AP' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,43] := '=SUM(AQ6:AQ' + IntToStr(row) + ')';
+    // MP2 ER AND YTD MP2 AMOUNT
+    oSheet.Cells[row+1,44] := '=SUM(AR6:AR' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,45] := '=SUM(AS6:AS' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,46] := '=SUM(AT6:AT' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,47] := '=SUM(AU6:AU' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,48] := '=SUM(AV6:AV' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,49] := '=SUM(AW6:AW' + IntToStr(row) + ')';
+
+    // FORMATTING //
+    oSheet.Columns['B:AV'].Style := 'Comma';
+    oSheet.Columns['AW'].Style := 'Comma';
+    // average pay per hour
+    oSheet.Columns['AX:AX'].NumberFormat := '_(* #,##0.00_);[Red]_(* (#,##0.00);_(* ""-""??_);_(@_)';
+    // average
+    oSheet.Columns['AZ:AZ'].NumberFormat := '_(* #,##0.00_);[Red]_(* (#,##0.00);_(* ""-""??_);_(@_)';
+    // other deduction before tax
+    oSheet.Columns['L:L'].NumberFormat := '_(* #,##0.00_);[Red]_(* (#,##0.00);_(* ""-""??_);_(@_)';
+    // payroll cutoff period
+    oSheet.Range['A1:B1'].Font.Bold := true;
+    oSheet.Range['A3:BA3'].Font.Bold := true;
+    oSheet.Range['A'+IntToStr(row+1)+':AY'+IntToStr(row+1)].Font.Bold := true;
+    oSheet.Columns['A:BA'].AutoFit;
+
+
+    oSheet.Range['AY'+IntToStr(row+1)+':AY'+IntToStr(row)].Font.Bold := true;
+    oSheet.Range['AY'+IntToStr(row+1)+':AY'+IntToStr(row)].Font.Color := clRED;
+
+    oSheet.Cells[row + 1,51] := '=SUM(AV' + IntToStr(row + 1) + '/AP' + IntToStr(row + 1) + ')';
+
+    oSheet.Cells[row+1,53] := '=SUM(BA4:BA' + IntToStr(row) + ')';
+
+    // set background color to green
+    oSheet.Range['AV'+IntToStr(row+1)+':AV'+IntToStr(row+1)].Interior.Color := clYELLOW;
+
+    // add up ADMIN and non-ADMIN total payroll expense
+    oSheet.Cells[row+3,48] := '=SUM(AV4+AV' + IntToStr(row+1) + ')';
+    oSheet.Range['AV'+IntToStr(row+3)+':AV'+IntToStr(row+3)].Interior.Color := clWebCornFlowerBlue;
+
+
+
+    if (cboProject.Text = '') then
+    begin
+
+    // Summary Report 2 //
+
+    vSQL := 'EXEC PayRep1 '+sPeriod2+','+sPeriod1;
+
+    ADOConnection1.Execute(vSQL);
+
+    
+    osheet := owb.Sheets[5];
+    osheet.Name := 'Employees with ATM';
+
+    ADODATASET1.CommandText := 'SELECT * FROM xPayRep3 ';
+    ADODATASET1.Open;
+    row := 1;
+    oSheet.Cells[row,1] := 'Payroll Period';
+    oSheet.Cells[row,2] := sPeriod1;
+    row := 3;
+    oSheet.Cells[row,1] := 'With ATM?';
+    oSheet.Cells[row,2] := 'Basic Pay';
+    oSheet.Cells[row,3] := 'Holiday Pay';
+    oSheet.Cells[row,4] := 'OT Pay';
+    oSheet.Cells[row,5] := 'OT Holiday Pay';
+    oSheet.Cells[row,6] := 'OT DayOff Pay';
+    oSheet.Cells[row,7] := 'Day Off Pay';
+    oSheet.Cells[row,8] := 'Night Diff Pay';
+    oSheet.Cells[row,9] := 'ND Holiday Pay';
+    oSheet.Cells[row,10] := 'ND DayOff Pay';
+    oSheet.Cells[row,11] := 'Other Earnings Bef. Tax';
+    oSheet.Cells[row,12] := 'Adjustment in Basic Pay';
+    oSheet.Cells[row,13] := 'Gross Pay';
+    oSheet.Cells[row,14] := 'With Tax';
+    oSheet.Cells[row,15] := 'SSS EE';
+    oSheet.Cells[row,16] := 'MPF EE';
+    oSheet.Cells[row,17] := 'PhilHealth EE';
+    oSheet.Cells[row,18] := 'Pagibig EE';
+    oSheet.Cells[row,19] := 'MP2 EE';
+
+    oSheet.Cells[row,20] := 'Other Earnings After Tax';
+
+    oSheet.Cells[row,21] := 'UPH Bonus';
+    oSheet.Cells[row,22] := 'Quality Bonus';
+    oSheet.Cells[row,23] := 'Retention Bonus';
+    oSheet.Cells[row,24] := 'Attendance Bonus';
+    oSheet.Cells[row,25] := 'Perfect Attendance Bonus';
+    oSheet.Cells[row,26] := 'Other Bonus';
+    oSheet.Cells[row,27] := 'Training Bonus';
+    oSheet.Cells[row,28] := 'FreeField Bonus';
+
+    oSheet.Cells[row,29] := 'Red Ribbon Advances';
+    oSheet.Cells[row,30] := 'Cash Advances';
+    oSheet.Cells[row,31] := 'HDMF Loan';
+    oSheet.Cells[row,32] := 'SSS Loan';
+    oSheet.Cells[row,33] := 'HDMF Calamity';
+    oSheet.Cells[row,34] := 'SSS Calamity';
+    oSheet.Cells[row,35] := 'Other';
+
+    oSheet.Cells[row,36] := 'Advances';
+    //oSheet.Cells[row,36] := 'SB Cash Advance';
+
+    oSheet.Cells[row,37] := 'Total Ded';
+    oSheet.Cells[row,38] := 'Net Pay';
+    oSheet.Cells[row,39] := 'SSS ER';
+    oSheet.Cells[row,40] := 'ECC ER';
+    oSheet.Cells[row,41] := 'MPF ER';
+    oSheet.Cells[row,42] := 'PhilHealth ER';
+    oSheet.Cells[row,43] := 'Pagibig ER';
+    oSheet.Cells[row,44] := 'MP2 ER';
+    oSheet.Cells[row,45] := 'YTD MP2 Amount';
+
+    oSheet.Cells[row,46] := '13th Month';
+    oSheet.Cells[row,47] := 'YTD 13th Month';
+    oSheet.Cells[row,48] := 'Total Payroll Expense';
+    oSheet.Cells[row,49] := 'No. of Employees';
+    row := 4;
+
+    repeat
+      Edit2.Text := ADODATASET1.FieldByName('Emp_Loc').AsString;
+      Edit2.Refresh;
+      oSheet.Cells[row,1] := AdoDataSet1.FieldByName('wATM').AsString;
+      oSheet.Cells[row,2] := AdoDataSet1.FieldByName('Basic_Pay').AsString;
+      oSheet.Cells[row,3] := AdoDataSet1.FieldByName('Holiday_Pay').AsString;
+      oSheet.Cells[row,4] := AdoDataSet1.FieldByName('OT_Pay').AsString;
+      oSheet.Cells[row,5] := AdoDataSet1.FieldByName('OT_Holiday_Pay').AsString;
+      oSheet.Cells[row,6] := AdoDataSet1.FieldByName('OT_DayOff_Pay').AsString;
+      oSheet.Cells[row,7] := AdoDataSet1.FieldByName('Day_Off_Pay').AsString;
+      oSheet.Cells[row,8] := AdoDataSet1.FieldByName('Night_Diff_Pay').AsString;
+      oSheet.Cells[row,9] := AdoDataSet1.FieldByName('Night_Diff_Holiday_Pay').AsString;
+      oSheet.Cells[row,10] := AdoDataSet1.FieldByName('Night_Diff_DayOff_Pay').AsString;
+      oSheet.Cells[row,11] := AdoDataSet1.FieldByName('Other_Earn_Bef_Tax').AsString;
+      oSheet.Cells[row,12] := AdoDataSet1.FieldByName('Other_Ded_Bef_Tax').AsString;
+      oSheet.Cells[row,13] := AdoDataSet1.FieldByName('Gross_Pay').AsString;
+      oSheet.Cells[row,14] := AdoDataSet1.FieldByName('With_Tax').AsString;
+      oSheet.Cells[row,15] := AdoDataSet1.FieldByName('SSS_EE').AsString;
+      oSheet.Cells[row,16] := AdoDataSet1.FieldByName('MPF_EE').AsString;
+      oSheet.Cells[row,17] := AdoDataSet1.FieldByName('PhilHealth_EE').AsString;
+      oSheet.Cells[row,18] := AdoDataSet1.FieldByName('Pagibig_EE').AsString;
+      oSheet.Cells[row,19] := AdoDataSet1.FieldByName('MP2_EE').AsString;
+
+      oSheet.Cells[row,20] := AdoDataSet1.FieldByName('Other_Earn_After_Tax').AsString;
+
+      oSheet.Cells[row,21] := AdoDataSet1.FieldByName('Bonus_UPH').AsString;
+      oSheet.Cells[row,22] := AdoDataSet1.FieldByName('Bonus_Quality').AsString;
+      oSheet.Cells[row,23] := AdoDataSet1.FieldByName('Bonus_Retention').AsString;
+      oSheet.Cells[row,24] := AdoDataSet1.FieldByName('Bonus_Attendance').AsString;
+      oSheet.Cells[row,25] := AdoDataSet1.FieldByName('Bonus_PerfectAttendance').AsString;
+      oSheet.Cells[row,26] := AdoDataSet1.FieldByName('Bonus_Others').AsString;
+      oSheet.Cells[row,27] := AdoDataSet1.FieldByName('Bonus_Training').AsString;
+      oSheet.Cells[row,28] := AdoDataSet1.FieldByName('Bonus_FreeField1').AsString;
+
+      oSheet.Cells[row,29] := AdoDataSet1.FieldByName('Other_Ded1_AfterTax').AsString;
+      oSheet.Cells[row,30] := AdoDataSet1.FieldByName('Other_Ded2_AfterTax').AsString;
+      oSheet.Cells[row,31] := AdoDataSet1.FieldByName('Other_Ded3_AfterTax').AsString;
+      oSheet.Cells[row,32] := AdoDataSet1.FieldByName('Other_Ded4_AfterTax').AsString;
+      oSheet.Cells[row,33] := AdoDataSet1.FieldByName('Other_Ded5_AfterTax').AsString;
+      oSheet.Cells[row,34] := AdoDataSet1.FieldByName('Other_Ded6_AfterTax').AsString;
+      oSheet.Cells[row,35] := AdoDataSet1.FieldByName('Other_Ded7_AfterTax').AsString;
+
+      oSheet.Cells[row,36] := AdoDataSet1.FieldByName('SB_CashAdvance').AsString;
+
+      oSheet.Cells[row,37] := AdoDataSet1.FieldByName('Total_Ded').AsString;
+      oSheet.Cells[row,38] := AdoDataSet1.FieldByName('Net_Pay').AsString;
+      oSheet.Cells[row,39] := AdoDataSet1.FieldByName('SSS_ER').AsString;
+      oSheet.Cells[row,40] := AdoDataSet1.FieldByName('ECC_ER').AsString;
+      oSheet.Cells[row,41] := AdoDataSet1.FieldByName('MPF_ER').AsString;
+      oSheet.Cells[row,42] := AdoDataSet1.FieldByName('PhilHealth_ER').AsString;
+      oSheet.Cells[row,43] := AdoDataSet1.FieldByName('Pagibig_ER').AsString;
+      oSheet.Cells[row,44] := AdoDataSet1.FieldByName('MP2_ER').AsString;
+      oSheet.Cells[row,45] := AdoDataSet1.FieldByName('YTD_MP2Amount').AsString;
+
+      oSheet.Cells[row,46] := AdoDataSet1.FieldByName('M13thmo').AsString;
+      oSheet.Cells[row,47] := AdoDataSet1.FieldByName('YTD_13thMo').AsString;
+      oSheet.Cells[row,48] := AdoDataSet1.FieldByName('TPay_Exp').AsString;
+      oSheet.Cells[row,49] := AdoDataSet1.FieldByName('no_emp').AsString;
+
+      row := row + 1;
+      ADODATASET1.Next;
+    until ADODATASET1.Eof;
+    ADODATASET1.Close;
+
+    oSheet.Cells[row+1,1] := 'Totals';
+
+    oSheet.Cells[row+1,2] := '=SUM(B4:B' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,3] := '=SUM(C4:C' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,4] := '=SUM(D4:D' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,5] := '=SUM(E4:E' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,6] := '=SUM(F4:F' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,7] := '=SUM(G4:G' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,8] := '=SUM(H4:H' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,9] := '=SUM(I4:I' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,10] := '=SUM(J4:J' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,11] := '=SUM(K4:K' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,12] := '=SUM(L4:L' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,13] := '=SUM(M4:M' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,14] := '=SUM(N4:N' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,15] := '=SUM(O4:O' + IntToStr(row) + ')';  // SSS EE
+    oSheet.Cells[row+1,16] := '=SUM(P4:P' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,17] := '=SUM(Q4:Q' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,18] := '=SUM(R4:R' + IntToStr(row) + ')';
+    // MP2 EE
+    oSheet.Cells[row+1,19] := '=SUM(S4:S' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,20] := '=SUM(T4:T' + IntToStr(row) + ')';
+
+    // bonuses
+    oSheet.Cells[row+1,21] := '=SUM(U4:U' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,22] := '=SUM(V4:V' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,23] := '=SUM(W4:W' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,24] := '=SUM(X4:X' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,25] := '=SUM(Y4:Y' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,26] := '=SUM(Z4:Z' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,27] := '=SUM(AA4:AA' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,28] := '=SUM(AB4:AB' + IntToStr(row) + ')';
+
+    // ded after tax
+    oSheet.Cells[row+1,29] := '=SUM(AC4:AC' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,30] := '=SUM(AD4:AD' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,31] := '=SUM(AE4:AE' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,32] := '=SUM(AF4:AF' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,33] := '=SUM(AG4:AG' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,34] := '=SUM(AH4:AH' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,35] := '=SUM(AI4:AI' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,36] := '=SUM(AJ4:AJ' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,37] := '=SUM(AK4:AK' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,38] := '=SUM(AL4:AL' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,39] := '=SUM(AM4:AM' + IntToStr(row) + ')';  // SSS ER
+    oSheet.Cells[row+1,40] := '=SUM(AN4:AN' + IntToStr(row) + ')';  // ECC ER
+    oSheet.Cells[row+1,41] := '=SUM(AO4:AO' + IntToStr(row) + ')';  // MPF ER
+
+    oSheet.Cells[row+1,42] := '=SUM(AP4:AP' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,43] := '=SUM(AQ4:AQ' + IntToStr(row) + ')';
+    // MP2 ER AND YTD MP2 AMOUNT
+    oSheet.Cells[row+1,44] := '=SUM(AR4:AR' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,45] := '=SUM(AS4:AS' + IntToStr(row) + ')';
+
+    oSheet.Cells[row+1,46] := '=SUM(AT4:AT' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,47] := '=SUM(AU4:AU' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,48] := '=SUM(AV4:AV' + IntToStr(row) + ')';
+    oSheet.Cells[row+1,49] := '=SUM(AW4:AW' + IntToStr(row) + ')';
+
+
+    // FORMATTING //
+    oSheet.Columns['B:AW'].Style := 'Comma';
+    // other deduction before tax
+    oSheet.Columns['L:L'].NumberFormat := '_(* #,##0.00_);[Red]_(* (#,##0.00);_(* ""-""??_);_(@_)';
+    // no of employees
+    oSheet.Columns['AW:AW'].NumberFormat := '_(* #,##0_);[Red]_(* (#,##0);_(* ""-""??_);_(@_)';
+    // payroll cutoff period
+    oSheet.Range['A1:B1'].Font.Bold := true;
+    oSheet.Range['A3:AW3'].Font.Bold := true;
+    oSheet.Range['A'+IntToStr(row+1)+':AW'+IntToStr(row+1)].Font.Bold := true;
+    oSheet.Columns['A:AW'].AutoFit;
+
+//////////// Payroll Adjustment //////////////////////
+
+    osheet := owb.Sheets[6];
+    osheet.Name := 'Payroll Adjustment Details';
+
+    ADODATASET1.CommandText := 'SELECT * FROM xPayRep1_Adj ORDER BY code, primary_task_id, hierarchy, emp_loc, employee_name';
+    ADODATASET1.Open;
+    row := 1;
+    oSheet.Cells[row,1] := 'Payroll Period';
+    oSheet.Cells[row,2] := sPeriod1;
+    row := 3;
+    //oSheet.Cells[row,1] := 'Location';
+    oSheet.Cells[row,1] := 'Employee Name';
+    oSheet.Cells[row,2] := 'Primary Task ID';
+    oSheet.Cells[row,3] := 'Job Position Code';
+    oSheet.Cells[row,4] := 'Hierarchy';
+    oSheet.Cells[row,5] := 'Employee PIN';
+    oSheet.Cells[row,6] := 'Adjustment';
+    oSheet.Cells[row,7] := 'Code';
+    oSheet.Cells[row,8] := 'Description';
+    oSheet.Cells[row,9] := 'Amount';
+    row := 4;
+    repeat
+      Edit2.Text := ADODATASET1.FieldByName('Employee_Name').AsString;
+      Edit2.Refresh;
+      //oSheet.Cells[row,1] := AdoDataSet1.FieldByName('Emp_Loc').AsString;
+      oSheet.Cells[row,1] := AdoDataSet1.FieldByName('Employee_Name').AsString;
+      oSheet.Cells[row,2] := AdoDataSet1.FieldByName('Primary_Task_ID').AsString;
+      oSheet.Cells[row,3] := AdoDataSet1.FieldByName('Job_Position_Code').AsString;
+      oSheet.Cells[row,4] := AdoDataSet1.FieldByName('Hierarchy').AsString;
+      oSheet.Cells[row,5] := AdoDataSet1.FieldByName('Employee_PIN').AsString;
+      oSheet.Cells[row,6] := AdoDataSet1.FieldByName('Adjustment').AsString;
+      oSheet.Cells[row,7] := AdoDataSet1.FieldByName('Code').AsString;
+      oSheet.Cells[row,8] := AdoDataSet1.FieldByName('Description').AsString;
+      oSheet.Cells[row,9] := AdoDataSet1.FieldByName('Amount').AsString;
+
+      row := row + 1;
+      ADODATASET1.Next;
+    until ADODATASET1.Eof;
+    ADODATASET1.Close;
+
+    oSheet.Cells[row+1,8] := 'Totals';
+    oSheet.Cells[row+1,9] := '=SUM(I4:I' + IntToStr(row) + ')';
+
+    // FORMATTING //
+    oSheet.Columns['I:I'].Style := 'Comma';
+    oSheet.Range['A1:B1'].Font.Bold := true;
+    oSheet.Range['A3:I3'].Font.Bold := true;
+    oSheet.Range['A'+IntToStr(row+1)+':I'+IntToStr(row+1)].Font.Bold := true;
+    //oSheet.Rows[row+1,row+1].Font.Bold := true;
+    oSheet.Columns['A:I'].AutoFit;
+
+    
+
+    osheet := owb.Sheets[7];
+    osheet.Name := 'Payroll Adjustment Summary';
+
+    ADODATASET1.CommandText := 'SELECT adjustment, code, SUM(amount) AS amount FROM xpayrep1_adj GROUP BY adjustment, code ORDER BY code';
+    ADODATASET1.Open;
+    row := 1;
+    oSheet.Cells[row,1] := 'Payroll Period';
+    oSheet.Cells[row,2] := sPeriod1;
+    row := 3;
+    oSheet.Cells[row,1] := 'Adjustment';
+    oSheet.Cells[row,2] := 'Code';
+    oSheet.Cells[row,3] := 'Amount';
+    row := 4;
+    repeat
+      Edit2.Text := ADODATASET1.FieldByName('Code').AsString;
+      Edit2.Refresh;
+      oSheet.Cells[row,1] := AdoDataSet1.FieldByName('Adjustment').AsString;
+      oSheet.Cells[row,2] := AdoDataSet1.FieldByName('Code').AsString;
+      oSheet.Cells[row,3] := AdoDataSet1.FieldByName('Amount').AsString;
+      row := row + 1;
+      ADODATASET1.Next;
+    until ADODATASET1.Eof;
+    ADODATASET1.Close;
+
+    oSheet.Cells[row+1,2] := 'Totals';
+    oSheet.Cells[row+1,3] := '=SUM(C4:C' + IntToStr(row) + ')';
+
+    // FORMATTING //
+    oSheet.Columns['C:C'].Style := 'Comma';
+    oSheet.Range['A1:B1'].Font.Bold := true;
+    oSheet.Range['A3:C3'].Font.Bold := true;
+    oSheet.Range['A'+IntToStr(row+1)+':C'+IntToStr(row+1)].Font.Bold := true;
+    //oSheet.Rows[row+1,row+1].Font.Bold := true;
+    oSheet.Columns['A:C'].AutoFit;
+
+
+    end; //end of condition if cboproject = ''
+      }
+
+    
+    // log //
+    SQL :=       'INSERT INTO dtaLogFile ' ;
+    SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Remarks ) ' ;
+    SQL := SQL + 'VALUES ';
+    SQL := SQL + '( ';
+    SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+    SQL := SQL + IntToStr(gUser_ID) + ', ';
+    SQL := SQL + chr(39) + frmPayRep1.Caption + chr(39) + ', ';
+    SQL := SQL + chr(39) + 'Report' + chr(39) + ', ';
+    SQL := SQL + chr(39) + DateToStr(DateTimePicker1.Date) + '|' + DateToStr(DateTimePicker2.Date) + chr(39) ;
+    SQL := SQL + ')';
+//    ShowMessage(SQL);
+    ADOConnection1.Execute(SQL);
+
+    oxl.visible := true;
+    //oxl.quit;
+
+end;
+
+procedure TfrmPayRep1.FormCreate(Sender: TObject);
+begin
+   ADOConnection1.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+   ADOConnection1.Connected := TRUE;
+end;
+
+procedure TfrmPayRep1.DateTimePicker1Change(Sender: TObject);
+begin
+  UpdateDateTo();
+end;
+
+procedure TfrmPayRep1.UpdateDateTo();
+var
+  dt: TDateTime;
+  myYear, myMonth, myDay : Word;
+begin
+  DecodeDate(DateTimePicker1.Date, myYear, myMonth, myDay);
+
+  dt := EncodeDate( myYear, myMonth + 1, 20);
+
+  {if(DayOfTheMonth(DateTimePicker1.Date))=1 then
+    dt := EncodeDate( myYear, myMonth, 15)
+  else
+    begin
+      dt := EndOfAMonth( myYear, myMonth );
+      DecodeDate( dt, myYear, myMonth, myDay );
+      dt := EncodeDate( myYear, myMonth, myDay );
+    end;}
+    
+  DateTimePicker2.Date := dt;
+  DateTimePicker2.Refresh;
+end;
+
+procedure TfrmPayRep1.FormActivate(Sender: TObject);
+begin
+  DateTimePicker1.Date := Today;
+  gUser := ActiveUserName;  // this is only temporary and must be modified
+  gUser_ID := StrToInt(ActiveUserID);    // this is only temporary
+
+  FillBranchCombo;
+
+  UpdateDateTo();
+end;
+
+procedure TfrmPayRep1.FillBranchCombo();
+var
+  varBranch : String;
+begin
+  dsFillBranch.Close;
+  dsFillBranch.CommandText := 'SELECT DISTINCT primary_task_id FROM dtaEmployees ' +
+    'WHERE emp_status = ''active'' AND primary_task_id <> ''ADMIN'' ORDER BY primary_task_id';
+  dsFillBranch.Connection := ADOConnection1;
+  dsFillBranch.Active := TRUE;
+
+  cboProject.Clear;
+  if dsFillBranch.RecordCount > 0 then
+  begin
+    dsFillBranch.First;
+    while not dsFillBranch.Eof do
+    begin
+      varBranch := dsFillBranch.FieldByName('primary_task_id').AsString;
+
+      cboProject.AddItem(varBranch, cboProject);
+
+      dsFillBranch.Next;
+    end;
+  end;
+end;
+
+procedure TfrmPayRep1.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  Action := caFree;
+end;
+
+end.

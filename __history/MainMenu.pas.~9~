@@ -1,0 +1,677 @@
+// Name:  MainMenu.pas
+// Description:  This is the main window of the payroll system
+//     wherein you can see all of its available modules.
+
+unit MainMenu;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, Menus, jpeg, ExtCtrls, CommonModule, DB, ADODB, LogTimeMaintenance,
+  EmployeeFileMaintenance, timeextract, EmployeeList, UpdateRateStatus, KeyerRemarks,
+  Access, TaskRemarksMaintenance, IdleEntry2, KeyerRemarksMaintenance, IdleRemarksMaintenance,
+  Modification, TaskRemarks, IdleRemarks, PayrollProcess, ViewIdleTimeEntry, Users,
+  Daily_Extract, KeyerSchedule, ShellAPI, StdCtrls, PayRep1, DayOff, PayRep2, frmProductionViewer,
+  ComCtrls, ExtractionIdleTime, ExtractionDayOff, ExtractedDayOffList, ChangePassword;
+
+type
+  TfrmMenu = class(TForm)
+    MainMenu1: TMainMenu;
+    File1: TMenuItem;
+    EmployeeFileMaintenance1: TMenuItem;
+    Process1: TMenuItem;
+    ADOAccess: TADOConnection;
+    dsAccess: TADODataSet;
+    dsUser: TADODataSet;
+    dsModule: TADODataSet;
+    N3: TMenuItem;
+    Exit1: TMenuItem;
+    Reports1: TMenuItem;
+    EmployeeList1: TMenuItem;
+    LogFileReport1: TMenuItem;
+    Security1: TMenuItem;
+    SystemUserMaintenance1: TMenuItem;
+    AccessRightsMaintenance1: TMenuItem;
+    ransaction1: TMenuItem;
+    DTRCorrection1: TMenuItem;
+    OtherEarningsDeductionsEntry1: TMenuItem;
+    PayrollProcess1: TMenuItem;
+    N2: TMenuItem;
+    PayrollSummaryReport1: TMenuItem;
+    HolidayMaintenance1: TMenuItem;
+    ADOConnection1: TADOConnection;
+    sBar: TStatusBar;
+    Timer1: TTimer;
+    N6: TMenuItem;
+    ChangePassword1: TMenuItem;
+    procedure ChangePassword1Click(Sender: TObject);
+    procedure ExtractedKeyerDayoff1Click(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
+    procedure KeyerProductionViewer1Click(Sender: TObject);
+    procedure SSS1Click(Sender: TObject);
+    procedure DayOffEntry1Click(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure PayRep1Click(Sender: TObject);
+    procedure ChinaTrustBank1Click(Sender: TObject);
+    procedure MissingPIN1Click(Sender: TObject);
+    procedure PayrollSummaryReport1Click(Sender: TObject);
+    procedure HolidayMaintenance1Click(Sender: TObject);
+    procedure LogFileVerification1Click(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure LogFileReport1Click(Sender: TObject);
+    procedure PaySlip1Click(Sender: TObject);
+    procedure Loginasdifferentuser1Click(Sender: TObject);
+    procedure OtherEarningsDeductionsEntry1Click(Sender: TObject);
+    procedure ProductionReportExtractions1Click(Sender: TObject);
+    procedure DailyTimeRecord1Click(Sender: TObject);
+    procedure OvertimeNOTransaction1Click(Sender: TObject);
+
+    procedure KeyerSchedule1Click(Sender: TObject);
+    procedure DailyScheduleExtraction1Click(Sender: TObject);
+    procedure SystemUserMaintenance1Click(Sender: TObject);
+    procedure KeyedIdleTime1Click(Sender: TObject);
+    procedure PayrollProcess1Click(Sender: TObject);
+    procedure IdleCodeList1Click(Sender: TObject);
+    procedure TaskList1Click(Sender: TObject);
+    procedure OvertimeValidation1Click(Sender: TObject);
+    procedure IdleTimeEntry1Click(Sender: TObject);
+    procedure KeyerIDMaintenance1Click(Sender: TObject);
+    procedure IdleCodeMaintenance1Click(Sender: TObject);
+    procedure TaskIDMaintenance1Click(Sender: TObject);
+    procedure AccessRightsMaintenance1Click(Sender: TObject);
+    procedure KeyerIDList1Click(Sender: TObject);
+    procedure UpdateRateStatusModule1Click(Sender: TObject);
+    procedure EmployeeList1Click(Sender: TObject);
+
+    procedure EmployeeFileMaintenance1Click(Sender: TObject);
+    procedure EDSTimeExtraction1Click(Sender: TObject);
+    procedure DTRCorrection1Click(Sender: TObject);
+    procedure Exit1Click(Sender: TObject);
+
+    procedure FormShow(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure DisableAllMenuItems();
+
+    function StringToCaseSelect (Selector : string; CaseList: array of string): Integer;
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmMenu: TfrmMenu;
+  vEmpId : String;
+  StartupInfo: TStartupInfo;
+  ProcessInfo: TProcessInformation;
+  gUser : String;
+  gUser_ID : Integer;
+  SQL : String;
+
+  varCurDept :  Integer;
+  pHandle : ^THandle;
+implementation
+
+uses  OvertimeVerification, ExtractionsList, PSDtaLog, earn_deduction, UserLogIn, untPaySlip,
+    HolidayMaintenance, ComObj, ExtractPayrollProcess;
+
+{$R *.dfm}
+
+procedure TfrmMenu.FormCreate(Sender: TObject);
+begin
+  ADOAccess.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+  ADOAccess.Connected := TRUE;
+
+  ADOConnection1.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+  ADOConnection1.Connected := TRUE;
+end;
+
+procedure TfrmMenu.FormShow(Sender: TObject);
+var
+  varAccessId : String;
+  varModuleDesc : String;
+begin
+
+  vEmpId := CommonModule.ActiveUserId;
+  //vEmpId := '313';
+
+  DisableAllMenuItems();
+
+  dsAccess.Close;
+  dsAccess.Connection := ADOAccess;
+  dsAccess.CommandText := 'SELECT * FROM dtaUser_Access_Rights WHERE User_ID = ' + Chr(39) + vEmpId + Chr(39);
+  dsAccess.Active := TRUE;
+
+  //ShowMessage(IntToStr(dsAccess.RecordCount));
+  if dsAccess.RecordCount > 0 then
+  begin
+    dsAccess.First;
+    while not dsAccess.Eof do
+    begin
+      varAccessId := dsAccess.FieldByName('Access_Id').AsString;
+
+      dsModule.Close;
+      dsModule.Connection := ADOAccess;
+      dsModule.CommandText := 'SELECT * FROM dtaAccess_Rights_Codes WHERE Access_Id = ' + varAccessId;
+      dsModule.Active := TRUE;
+
+      if dsModule.RecordCount > 0 then
+      begin
+        varModuleDesc := dsModule.FieldByName('Program_Module').AsString;
+
+        case StringToCaseSelect(varModuleDesc,
+          ['Employee File Maintenance','Task-ID Maintenance','Idle Code Maintenance', 'Keyer-ID Maintenance', 'Holiday Maintenance',
+            'Idle Time Entry', 'DTR Correction', 'Overtime Validation', 'Other Earnings/Deductions Entry', 'Log File Verification',
+            'DTR Correction1', 'Overtime (No) Transaction', 'Day Off',
+            'Daily Schedule Extraction', 'EDS Time Extraction', 'Production Report Extractions', 'Payroll Process', 'Employee List', 'Task List', 'Idle Code List',
+            'Keyed Idle Time', 'Keyer-ID List ', 'Daily Time Record', 'Log File Report', 'Extracted Time Periods', 'Keyer Schedule', 'Payroll Summary Report', 'Payroll With ATM',
+            'Payroll Cash Basis', 'Production Report Extraction Summary', 'System User Maintenance', 'Access Rights Maintenance', 'Pay Slip', 'Missing PIN',
+            'ChinaTrust File Transmission', 'SSS File Transmission']) of
+          0:EmployeeFileMaintenance1.Enabled := TRUE;
+          1:TaskIDMaintenance1.Enabled := TRUE;
+          2:IdleCodeMaintenance1.Enabled := TRUE;
+          3:KeyerIDMaintenance1.Enabled := TRUE;
+          4:HolidayMaintenance1.Enabled := TRUE;
+          5:IdleTimeEntry1.Enabled := TRUE;
+          6:DTRCorrection1.Enabled := TRUE;
+          7:OvertimeValidation1.Enabled := TRUE;
+          8:OtherEarningsDeductionsEntry1.Enabled := TRUE;
+          9:LogFileVerification1.Enabled := TRUE;
+          //10:DTRCorrection2.Enabled := TRUE;
+          //11:OvertimeNoTransaction1.Enabled := TRUE;
+          12:DayOffEntry1.Enabled := TRUE;
+          //13:DailyScheduleExtraction1.Enabled := TRUE;
+          14:EDSTimeExtraction1.Enabled := TRUE;
+          15:ProductionReportExtractions1.Enabled := TRUE;
+          16:PayrollProcess1.Enabled := TRUE;
+          17:EmployeeList1.Enabled := TRUE;
+          18:TaskList1.Enabled := TRUE;
+          19:IdleCodeList1.Enabled := TRUE;
+          20:KeyedIdleTime1.Enabled := TRUE;
+          21:KeyerIDList1.Enabled := TRUE;
+          22:DailyTimeRecord1.Enabled := TRUE;
+          23:LogFileReport1.Enabled := TRUE;
+          //24:ExtractedTimePeriods1.Enabled := TRUE;
+          //25:KeyerSchedule1.Enabled := TRUE;
+          26:PayrollSummaryReport1.Enabled := TRUE;
+          //27:WithATM1.Enabled := TRUE;
+          //28:Cash1.Enabled := TRUE;
+          //29:ProductionReportExtractionSummary1.Enabled := TRUE;
+          30:SystemUserMaintenance1.Enabled := TRUE;
+          31:AccessRightsMaintenance1.Enabled := TRUE;
+          32:PaySlip1.Enabled := TRUE;
+          33:MissingPIN1.Enabled := TRUE;
+          34:ChinaTrustBank1.Enabled := TRUE;
+          35:SSS1.Enabled := TRUE;
+        end;
+      end;
+
+      dsAccess.Next;
+
+    end;
+   end;
+end;
+
+procedure TfrmMenu.DisableAllMenuItems();
+begin
+          EmployeeFileMaintenance1.Enabled := FALSE;
+          TaskIDMaintenance1.Enabled := FALSE;
+          IdleCodeMaintenance1.Enabled := FALSE;
+          KeyerIDMaintenance1.Enabled := FALSE;
+          HolidayMaintenance1.Enabled := FALSE;
+          IdleTimeEntry1.Enabled := FALSE;
+          DTRCorrection1.Enabled := FALSE;
+          OvertimeValidation1.Enabled := FALSE;
+          OtherEarningsDeductionsEntry1.Enabled := FALSE;
+          LogFileVerification1.Enabled := FALSE;
+          //DTRCorrection2.Enabled := FALSE;
+          //OvertimeNoTransaction1.Enabled := FALSE;
+          DayOffEntry1.Enabled := FALSE;
+          //DailyScheduleExtraction1.Enabled := FALSE;
+          EDSTimeExtraction1.Enabled := FALSE;
+          ProductionReportExtractions1.Enabled := FALSE;
+          PayrollProcess1.Enabled := FALSE;
+          EmployeeList1.Enabled := FALSE;
+          TaskList1.Enabled := FALSE;
+          IdleCodeList1.Enabled := FALSE;
+          KeyedIdleTime1.Enabled := FALSE;
+          KeyerIDList1.Enabled := FALSE;
+          DailyTimeRecord1.Enabled := FALSE;
+          LogFileReport1.Enabled := FALSE;
+          //ExtractedTimePeriods1.Enabled := FALSE;
+          //KeyerSchedule1.Enabled := FALSE;
+          PayrollSummaryReport1.Enabled := FALSE;
+          //WithATM1.Enabled := FALSE;
+          //Cash1.Enabled := FALSE;
+          //ProductionReportExtractionSummary1.Enabled := FALSE;
+          SystemUserMaintenance1.Enabled := FALSE;
+          AccessRightsMaintenance1.Enabled := FALSE;
+          PaySlip1.Enabled := FALSE;
+          MissingPIN1.Enabled := FALSE;
+          ChinaTrustBank1.Enabled := FALSE;
+          SSS1.Enabled := FALSE;
+end;
+
+function TfrmMenu.StringToCaseSelect
+   (Selector : string;
+CaseList: array of string): Integer;
+var cnt: integer;
+begin
+   Result:=-1;
+   for cnt:=0 to Length(CaseList)-1 do
+begin
+     if CompareText(Selector, CaseList[cnt]) = 0 then
+     begin
+       Result:=cnt;
+       Break;
+     end;
+   end;
+end;
+
+
+procedure TfrmMenu.Exit1Click(Sender: TObject);
+begin
+  frmMenu.Close;
+  halt(0);
+end;
+
+procedure TfrmMenu.DTRCorrection1Click(Sender: TObject);
+begin
+//  frmLogTimeMaintenance.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmLogTimeMaintenance.Create(Application) do show;
+end;
+
+procedure TfrmMenu.EDSTimeExtraction1Click(Sender: TObject);
+begin
+//  frmTimeExtraction.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmTimeExtraction.Create(Application) do show;
+end;
+
+procedure TfrmMenu.EmployeeFileMaintenance1Click(Sender: TObject);
+begin
+//  frmEmployeeFileMaintenance.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmEmployeeFileMaintenance.Create(Application) do show;
+end;
+
+procedure TfrmMenu.EmployeeList1Click(Sender: TObject);
+begin
+//  frmEmployeeList.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmEmployeeList.Create(Application) do show;
+end;
+
+procedure TfrmMenu.UpdateRateStatusModule1Click(Sender: TObject);
+begin
+  frmUpdateRateStatus.Show;
+end;
+
+procedure TfrmMenu.KeyerIDList1Click(Sender: TObject);
+begin
+//  frmKeyerRemarks.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmKeyerRemarks.Create(Application) do show;
+end;
+
+procedure TfrmMenu.AccessRightsMaintenance1Click(Sender: TObject);
+begin
+//  frmAccess.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmAccess.Create(Application) do show;
+end;
+
+procedure TfrmMenu.TaskIDMaintenance1Click(Sender: TObject);
+begin
+//  frmTaskRemarksMaintenance.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmTaskRemarksMaintenance.Create(Application) do show;
+end;
+
+procedure TfrmMenu.IdleCodeMaintenance1Click(Sender: TObject);
+begin
+//  frmIdleRemarksMaintenance.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmIdleRemarksMaintenance.Create(Application) do show;
+end;
+
+procedure TfrmMenu.KeyerIDMaintenance1Click(Sender: TObject);
+begin
+//  frmKeyerRemarksMaintenance.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmKeyerRemarksMaintenance.Create(Application) do show;
+end;
+
+procedure TfrmMenu.IdleTimeEntry1Click(Sender: TObject);
+begin
+//  frmIdleEntry2.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmIdleEntry2.Create(Application) do show;
+  //with TfrmIdleTimeExtraction.Create(Application) do show;
+end;
+
+procedure TfrmMenu.OvertimeValidation1Click(Sender: TObject);
+begin
+  frmOvertimeValidation.Show;
+end;
+
+procedure TfrmMenu.TaskList1Click(Sender: TObject);
+begin
+//  frmTaskRemarks.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmTaskRemarks.Create(Application) do show;
+end;
+
+procedure TfrmMenu.IdleCodeList1Click(Sender: TObject);
+begin
+//  frmIdleRemarks.Show;'
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmIdleRemarks.Create(Application) do show;
+end;
+
+procedure TfrmMenu.PayrollProcess1Click(Sender: TObject);
+begin
+//  frmPayrollProcess.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  
+  with TfrmPayrollProcess.Create(Application) do show;
+end;
+
+procedure TfrmMenu.KeyedIdleTime1Click(Sender: TObject);
+begin
+// frmViewKeyedIdleTime.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmViewKeyedIdleTime.Create(Application) do show;
+end;
+
+procedure TfrmMenu.SystemUserMaintenance1Click(Sender: TObject);
+begin
+//  frmUsers.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmUsers.Create(Application) do show;
+end;
+
+procedure TfrmMenu.DailyScheduleExtraction1Click(Sender: TObject);
+begin
+  frmDailySchedExtract.Show;
+end;
+
+procedure TfrmMenu.KeyerSchedule1Click(Sender: TObject);
+begin
+  varModule := 'Keyer Schedule';
+  varTable := 'dtaKeyerSchedule';
+
+  frmKeyerSchedule.Show;
+end;
+
+procedure TfrmMenu.OvertimeNOTransaction1Click(Sender: TObject);
+begin
+  frmOvertimeVerification.Show;
+end;
+
+procedure TfrmMenu.DailyTimeRecord1Click(Sender: TObject);
+begin
+  FillChar(StartupInfo, SizeOf(StartupInfo), #0);
+  StartupInfo.cb := SizeOf(StartupInfo);
+  StartupInfo.dwFlags := STARTF_USESHOWWINDOW;
+  StartupInfo.wShowWindow := 10;
+  begin
+    if not CreateProcess(nil,
+      'Reports\projDTRViewer.EXE', // pointer to command line string
+      nil, // pointer to process security attributes
+      nil, // pointer to thread security attributes
+      False, // handle inheritance flag
+      CREATE_NEW_CONSOLE or // creation flags
+      NORMAL_PRIORITY_CLASS,
+      nil, //pointer to new environment block
+      nil, // pointer to current directory name
+      StartupInfo, // pointer to STARTUPINFO
+      ProcessInfo) then showMessage('Bad or Missing Executable'); // pointer to PROCESS_INF
+  end;
+//  frmMenu.setfocus;
+end;
+
+procedure TfrmMenu.ProductionReportExtractions1Click(Sender: TObject);
+begin
+//  frmExtractionsList.Show;
+//  frmExtractionsList.SetFocus;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmExtractionsList.Create(Application) do show;
+end;
+
+procedure TfrmMenu.OtherEarningsDeductionsEntry1Click(Sender: TObject);
+begin
+//  TformEarnDed.Show;
+//  TformEarnDed.SetFocus;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmEarnDed.Create(Application) do show;
+end;
+
+procedure TfrmMenu.Loginasdifferentuser1Click(Sender: TObject);
+begin
+ // frmMenu.Close;
+//  frmUserLogIn.Show;
+end;
+
+procedure TfrmMenu.PaySlip1Click(Sender: TObject);
+begin
+{
+  dsAccess.Close;
+  dsAccess.Connection := ADOAccess;
+  dsAccess.CommandText := 'SELECT * FROM dtaEmployees WHERE Employee_PIN = ''' + ActiveUserID + '''';
+  dsAccess.Active := TRUE;
+
+  if dsAccess.RecordCount > 0 then
+  begin
+    varJob := dsAccess.FieldByName('Job_Position_Code').AsString;
+
+    if varJob = 'PYCLK' then
+    begin
+      PaySlip.Show;
+      PaySlip.SetFocus;
+    end
+    else
+      ShowMessage('Only Accounting Clerk can view this form');
+
+  end;
+}
+  FillChar(StartupInfo, SizeOf(StartupInfo), #0);
+  StartupInfo.cb := SizeOf(StartupInfo);
+  StartupInfo.dwFlags := STARTF_USESHOWWINDOW;
+  StartupInfo.wShowWindow := 10;
+  begin
+
+    // log //
+    SQL :=       'INSERT INTO dtaLogFile ' ;
+    SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command ) ' ;
+    SQL := SQL + 'VALUES ';
+    SQL := SQL + '( ';
+    SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+    SQL := SQL + IntToStr(gUser_ID) + ', ';
+    SQL := SQL + chr(39) + 'Pay Slip' + chr(39) + ', ';
+    SQL := SQL + chr(39) + 'Report' + chr(39) ;
+    SQL := SQL + ')';
+    ADOConnection1.Execute(SQL);
+
+
+    if not CreateProcess(nil,
+      'VbPaySlip\VbPaySlip.EXE', // pointer to command line string
+      nil, // pointer to process security attributes
+      nil, // pointer to thread security attributes
+      False, // handle inheritance flag
+      CREATE_NEW_CONSOLE or // creation flags
+      NORMAL_PRIORITY_CLASS,
+      nil, //pointer to new environment block
+      nil, // pointer to current directory name
+      StartupInfo, // pointer to STARTUPINFO
+      ProcessInfo) then showMessage('Bad or Missing Executable'); // pointer to PROCESS_INF
+  end;
+//  frmMenu.setfocus;
+end;
+
+procedure TfrmMenu.LogFileReport1Click(Sender: TObject);
+begin
+//  frmLogFile.Show;
+//  frmLogFile.SetFocus;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmLogFile.Create(Application) do show;
+end;
+
+procedure TfrmMenu.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  halt(0);
+end;
+
+procedure TfrmMenu.LogFileVerification1Click(Sender: TObject);
+begin
+  frmOvertimeVerification.Show;
+end;
+
+procedure TfrmMenu.HolidayMaintenance1Click(Sender: TObject);
+begin
+//    frmHolidayMaintenance.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmHolidayMaintenance.Create(Application) do show;
+end;
+
+procedure TfrmMenu.PayrollSummaryReport1Click(Sender: TObject);
+begin
+//  FillChar(StartupInfo, SizeOf(StartupInfo), #0);
+//  StartupInfo.cb := SizeOf(StartupInfo);
+//  StartupInfo.dwFlags := STARTF_USESHOWWINDOW;
+//  StartupInfo.wShowWindow := 10;
+ // begin
+//    if not CreateProcess(nil,
+//      'Reports\VbMasterSheetPayrollSummary.exe', // pointer to command line string
+//      nil, // pointer to process security attributes
+//      nil, // pointer to thread security attributes
+//      False, // handle inheritance flag
+//      CREATE_NEW_CONSOLE or // creation flags
+ //     NORMAL_PRIORITY_CLASS,
+//      nil, //pointer to new environment block
+//     nil, // pointer to current directory name
+//      StartupInfo, // pointer to STARTUPINFO
+//      ProcessInfo) then showMessage('Bad or Missing Executable'); // pointer to PROCESS_INF
+//  end;
+//  frmMenu.setfocus;
+//  frmPayRep1.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmPayRep1.Create(Application) do show;
+end;
+
+procedure TfrmMenu.MissingPIN1Click(Sender: TObject);
+begin
+  FillChar(StartupInfo, SizeOf(StartupInfo), #0);
+  StartupInfo.cb := SizeOf(StartupInfo);
+  StartupInfo.dwFlags := STARTF_USESHOWWINDOW;
+  StartupInfo.wShowWindow := 10;
+  begin
+    if not CreateProcess(nil,
+      'Reports\VbMissingPIN.exe', // pointer to command line string
+      nil, // pointer to process security attributes
+      nil, // pointer to thread security attributes
+      False, // handle inheritance flag
+      CREATE_NEW_CONSOLE or // creation flags
+      NORMAL_PRIORITY_CLASS,
+      nil, //pointer to new environment block
+      nil, // pointer to current directory name
+      StartupInfo, // pointer to STARTUPINFO
+      ProcessInfo) then showMessage('Bad or Missing Executable'); // pointer to PROCESS_INF
+  end;
+//  frmMenu.setfocus;
+
+end;
+
+procedure TfrmMenu.ChinaTrustBank1Click(Sender: TObject);
+begin
+//  frmExtractPayrollProcess.Show;
+//  frmExtractPayrollProcess.SetFocus;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmExtractPayrollProcess.Create(Application) do show;
+end;
+
+procedure TfrmMenu.PayRep1Click(Sender: TObject);
+begin
+  frmPayRep1.Show;
+end;
+
+procedure TfrmMenu.FormActivate(Sender: TObject);
+begin
+  gUser := ActiveUserName;  // this is only temporary and must be modified
+  gUser_ID := StrToInt(ActiveUserID);    // this is only temporary
+
+  Timer1.Enabled := true;
+
+  sBar.Panels.Items[1].Text := 'Current date:     ' + FormatDateTime('dddd, mmmm d, yyyy', Now);
+end;
+
+procedure TfrmMenu.DayOffEntry1Click(Sender: TObject);
+begin
+//  frmDayOff.Show;
+//  frmDayOff.SetFocus;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmDayOff.Create(Application) do show;
+end;
+
+procedure TfrmMenu.SSS1Click(Sender: TObject);
+begin
+//  frmPayRep2.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmPayRep2.Create(Application) do show;
+end;
+
+procedure TfrmMenu.KeyerProductionViewer1Click(Sender: TObject);
+begin
+//  ProductionViewer.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TProductionViewer.Create(Application) do show;
+end;
+
+procedure TfrmMenu.Timer1Timer(Sender: TObject);
+begin
+  sBar.Panels.Items[0].Text := 'Current time:         ' + TimeToStr(Now);
+end;
+
+procedure TfrmMenu.ExtractedKeyerDayoff1Click(Sender: TObject);
+begin
+// TfrmExtractedDayOff.Show;
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmExtractedDayOff.Create(Application) do show;
+end;
+
+procedure TfrmMenu.ChangePassword1Click(Sender: TObject);
+begin
+  pHandle :=@Application.MainForm.ClientHandle;
+  pHandle^:=ClientHandle;
+  with TfrmChangePassword.Create(Application) do show;
+end;
+
+end.

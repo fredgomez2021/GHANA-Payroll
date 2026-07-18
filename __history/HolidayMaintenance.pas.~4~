@@ -1,0 +1,564 @@
+// Name:  HolidayMaintenance.pas
+// Description:  This is the form where you can set or unset
+//     all holidays for a given period.  This will also be a
+//     basis in computing holiday pay for employees.
+
+unit HolidayMaintenance;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, DB,  ADODB, StdCtrls, Grids, DateUtils, DBGrids, ComCtrls, ExtCtrls,
+  CommonModule;
+
+
+type
+  TfrmHolidayMaintenance = class(TForm)
+    GroupBox1: TGroupBox;
+    Label1: TLabel;
+    Label2: TLabel;
+    dtDate2: TDateTimePicker;
+    GroupBox3: TGroupBox;
+    Label3: TLabel;
+    Label4: TLabel;
+    txtHolidayDesc: TEdit;
+    GroupBox2: TGroupBox;
+    DBGrid1: TDBGrid;
+    dtDate1: TDateTimePicker;
+    cmdAdd: TButton;
+    cmdSave: TButton;
+    cmdCancel: TButton;
+    ADOConnection1: TADOConnection;
+    ADODataSet1: TADODataSet;
+    DataSource1: TDataSource;
+    TDate: TEdit;
+    dsAccess: TADODataSet;
+    dsModule: TADODataSet;
+    Button1: TButton;
+    Label5: TLabel;
+    cmbHolidayType: TComboBox;
+    dsChecker: TADODataSet;
+    dsLogFile: TADODataSet;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure DBGrid1KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure DBGrid1CellClick(Column: TColumn);
+    procedure Button1Click(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure cmdCancelClick(Sender: TObject);
+    procedure cmdSaveClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure cmdAddClick(Sender: TObject);
+    procedure cmdCloseClick(Sender: TObject);
+    procedure dtDate1Change(Sender: TObject);
+    procedure Grid_Load;
+    procedure GenLog(tUserId, tModuleDesc, tCommand, tTableName, tFieldName, tNewVal : String);
+    procedure GenPeriod1();
+    procedure LoadHolidayTypes();
+
+    procedure InsertToLogFile(vDate, vUser, vModule, vCommand, vTable, vPIN: String);
+
+    function StringToCaseSelect (Selector : string; CaseList: array of string): Integer;
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+Const
+  tModDesc = 'Holiday Maintenance';
+  tTableName = 'dtaHoliday_Details';
+var
+  frmHolidayMaintenance: TfrmHolidayMaintenance;
+  tUserID : String;
+  tField : String;
+  tFunction : String;
+
+  gUser : String;
+  gUser_ID : Integer;
+
+  sUserID : string;
+  sTranDate : string;
+
+
+implementation
+
+{$R *.dfm}
+ function IsDate(str: string): Boolean;
+var
+  dt: TDateTime;
+begin
+  Result := True;
+  try
+    dt := StrToDate(str);
+  except
+    Result := False;
+  end;
+end;
+
+procedure TfrmHolidayMaintenance.dtDate1Change(Sender: TObject);
+var
+  dt: TDateTime;
+  myYear, myMonth, myDay : Word;
+begin
+    dbgrid1.Visible := true;
+    DecodeDate(dtDate1.Date, myYear, myMonth, myDay);
+  if(DayOfTheMonth(dtDate1.Date))=1 then
+    dt := EncodeDate( myYear, myMonth, 15)
+  else
+  begin
+      dt := EndOfAMonth( myYear, myMonth );
+      DecodeDate( dt, myYear, myMonth, myDay );
+      dt := EncodeDate( myYear, myMonth, myDay );
+  end;
+  dtDate2.Date := dt;
+  dtDate2.Refresh;
+
+  //Grid_Load;
+end;
+
+procedure TfrmHolidayMaintenance.cmdCloseClick(Sender: TObject);
+begin
+  close;
+end;
+
+procedure TfrmHolidayMaintenance.cmdAddClick(Sender: TObject);
+var
+  tDateFr, tDateTo, tDate3 : String;
+begin
+//  DateTimeToString(formattedDateTime, 'yyyymmdd', dtDate1.Date);
+//  showmessage(     formattedDateTime);
+  if (Length(trim(tdate.Text)) > 0) and (Length(trim(txtHolidayDesc.Text)) > 0)
+    and (Length(Trim(cmbHolidayType.Text)) > 0) then
+  begin
+    if not IsDate(tdate.Text) then
+    begin
+        showmessage('invalid date');
+    end;
+
+    DateTimeToString(tDateFr, 'yyyymmdd', dtDate1.Date);
+    DateTimeToString(tDateTo, 'yyyymmdd', dtDate2.Date);
+    DateTimeToString(tDate3, 'yyyymmdd', strtodate(tdate.Text));
+
+    if (tdate3 >= tdatefr) and (tdate3 <= tdateto) THEN
+    begin
+
+        //check if holiday exists in the table dtaholiday_details
+        dsChecker.Close;
+        dsChecker.CommandText := 'SELECT * FROM dtaHoliday_Details WHERE HDate =' + Chr(39) + TDate.Text + Chr(39) +
+          ' AND Description = ' + Chr(39) + txtHolidayDesc.Text + Chr(39);
+        dsChecker.Connection := ADOConnection1;
+        dsChecker.Active := TRUE;
+
+        if dsChecker.RecordCount = 0 then
+        begin
+
+          tFunction :='Add Holiday';
+
+          ADODataSet1.Insert;
+            ADODataSet1.FieldByName('Period1').AsString := DateToStr(dtDate1.Date);
+            ADODataSet1.FieldByName('Hdate').AsString := TDate.Text;
+            ADODataSet1.FieldByName('Description').AsString := txtHolidayDesc.text;
+            ADODataSet1.FieldByName('Holiday_Type').AsString := cmbHolidayType.Text;
+          ADODataSet1.Post;
+
+          tField :='HDate';
+          GenLog(IntToStr(gUser_ID), tModDesc, tFunction , tTableName, tField, TDate.Text);
+          tField :='Desciption';
+          GenLog(IntToStr(gUser_ID), tModDesc, tFunction, tTableName, tField, txtHolidayDesc.text);
+          tField :='Holiday_Type';
+          GenLog(IntToStr(gUser_ID), tModDesc, tFunction, tTableName, tField, cmbHolidayType.text);
+
+          TDate.Text := '';
+          txtHolidayDesc.Text := '';
+          cmbHolidayType.Text := '';
+
+          GenPeriod1;
+
+          ShowMessage('Record was successfully saved!');
+        end
+        else ShowMessage('Holiday info already exists!');
+    end
+    else showmessage('Invalid date entered. Please use date within selected date period');
+   end
+  else showmessage('Please input data to be added.');
+end;
+
+procedure TfrmHolidayMaintenance.FormCreate(Sender: TObject);
+begin
+    ADOConnection1.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+    ADOConnection1.Connected := TRUE;
+
+    LoadHolidayTypes;
+   // tUserId := 'UserId';
+end;
+
+procedure TfrmHolidayMaintenance.Grid_Load;
+begin
+    ADODataSet1.Close;
+    ADODataSet1.CommandText := 'SELECT [Hdate], [Description], Period1, [Holiday_Type]' +
+                                ' FROM [dtaHoliday_Details]' +
+                                ' where [Hdate] between ' + Chr(39) +  DateToStr(dtDate1.Date) + Chr(39) +
+                                ' and ' + Chr(39) +  DateToStr(dtDate2.Date) + Chr(39)  +
+                                ' order by [Hdate]';
+
+    ADODataSet1.Open;
+
+    if ADODATASET1.RecordCount > 0 then
+    begin
+        DataSource1.DataSet := ADODataSet1;
+        DBGrid1.DataSource := DataSource1;
+        DBGrid1.Refresh;
+        GenPeriod1;
+    end
+    else
+      messagedlg('No Record Found', mtConfirmation, mbOKcancel,0);
+end;
+
+procedure TfrmHolidayMaintenance.cmdSaveClick(Sender: TObject);
+var
+tDateFr, tDateTo, tDate3 : String;
+begin
+
+  tFunction :='Edit Holiday';
+
+  if cmdSave.Caption = '&Save' then
+  begin
+
+  DateTimeToString(tDateFr, 'yyyymmdd', dtDate1.Date);
+  DateTimeToString(tDateTo, 'yyyymmdd', dtDate2.Date);
+  DateTimeToString(tDate3, 'yyyymmdd', strtodate(tdate.Text));
+
+
+    if (tdate3 >= tdatefr) and (tdate3 <= tdateto) THEN
+    begin
+
+        //check if holiday exists in the table dtaholiday_details
+        dsChecker.Close;
+        dsChecker.CommandText := 'SELECT * FROM dtaHoliday_Details WHERE HDate =' + Chr(39) + TDate.Text + Chr(39);// +
+//          ' AND Description = ' + Chr(39) + txtHolidayDesc.Text + Chr(39);
+        dsChecker.Connection := ADOConnection1;
+        dsChecker.Active := TRUE;
+
+        if dsChecker.RecordCount > 0 then
+        begin
+
+          ADODataSet1.edit;
+            //ADODataSet1.FieldByName('Hdate').AsString := TDate.Text;
+            ADODataSet1.FieldByName('Holiday_Type').AsString := cmbHolidayType.Text;
+            ADODataSet1.FieldByName('Description').AsString := txtHolidayDesc.text;
+          ADODataSet1.post;
+
+          cmdSave.Caption := '&Edit';
+          cmdCancel.Caption := '&Delete';
+
+          tField :='HDate';
+          GenLog(IntToStr(gUser_ID), tModDesc, tFunction , tTableName, tField, TDate.Text);
+          tField :='Desciption';
+          GenLog(IntToStr(gUser_ID), tModDesc, tFunction, tTableName, tField, txtHolidayDesc.text);
+          tField :='Holiday_Type';
+          GenLog(IntToStr(gUser_ID), tModDesc, tFunction, tTableName, tField, cmbHolidayType.text);
+
+          TDate.Text   := '';
+          txtHolidayDesc.Text   := '';
+          cmbHolidayType.Text := '';
+
+          GenPeriod1;
+
+          ShowMessage('Record was successfully updated!');
+       end
+       else ShowMessage('Holiday info already exists!');
+    end
+    else showmessage('Invalid date entered. Please use date within selected date period');
+  end
+  else
+  begin
+      cmdCancel.Caption := 'Cancel';
+      cmdSave.Caption := '&Save';
+      TDate.Text   := ADODataSet1.FieldByName('Hdate').asString;
+      txtHolidayDesc.Text   := ADODataSet1.FieldByName('Description').asString;
+  end;
+end;
+
+procedure TfrmHolidayMaintenance.cmdCancelClick(Sender: TObject);
+begin
+  if cmdCancel.Caption = 'Cancel' then
+  begin
+    cmdSave.Caption := '&Edit';
+    cmdCancel.Caption := '&Delete';
+
+    TDate.Text   := '';
+    txtHolidayDesc.Text   := '';
+    cmbHolidayType.Text := '';
+  end
+  else
+  begin
+    tFunction :='Delete Holiday';
+
+    TDate.Text   := ADODataSet1.FieldByName('Hdate').AsString;
+    cmbHolidayType.Text := ADODataSet1.FieldByName('Holiday_Type').AsString;
+    txtHolidayDesc.Text   := ADODataSet1.FieldByName('Description').AsString;
+
+    if messagedlg('Delete this record?', mtConfirmation, mbOKcancel, 0) = mrOK then
+    begin
+      tField :='HDate';
+      GenLog(IntToStr(gUser_ID), tModDesc, tFunction , tTableName, tField, TDate.Text);
+      tField :='Desciption';
+      GenLog(IntToStr(gUser_ID), tModDesc, tFunction, tTableName, tField, txtHolidayDesc.Text);
+      tField :='Holiday_Type';
+      GenLog(IntToStr(gUser_ID), tModDesc, tFunction, tTableName, tField, cmbHolidayType.Text);
+
+      ADODataSet1.Delete;
+    end;
+
+    TDate.Text := '';
+    txtHolidayDesc.Text := '';
+    cmbHolidayType.Text := '';
+
+    GenPeriod1;
+  end;
+end;
+
+procedure TfrmHolidayMaintenance.GenLog(tUserId,
+                        tModuleDesc,
+                        tCommand,
+                        tTableName,
+                        tFieldName,
+                        tNewVal : String);
+var
+  SQL: String;
+begin
+  tUserId := IntToStr(gUser_ID);
+
+  SQL := 'INSERT INTO dtaLogFile '
+           + ' ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, New_Value ) '
+           + 'VALUES ( '
+           + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', '
+           + chr(39) + tUserId + chr(39) + ', '
+           + chr(39) + tModuleDesc + chr(39) + ', '
+           + chr(39) + tCommand + chr(39) + ', '
+           + chr(39) + tTableName + chr(39) + ', '
+           + chr(39) + tFieldName + chr(39) + ', '
+           + chr(39) + tNewVal + Chr(39) +
+           ')';
+  ADOConnection1.Execute(SQL);
+end;
+
+procedure TfrmHolidayMaintenance.GenPeriod1();
+var tRecCtr : integer;
+begin
+
+//        DBGrid1.DataSource := nil;
+//        DBGrid1.Refresh;
+//        tRecCtr := 1;
+//        ADODataSet1.Requery();
+
+//      while not ADODataSet1.EOF do
+//      begin
+//        ADODataSet1.edit;
+//        if tRecCtr = 1 then
+//           ADODataSet1.FieldByName('Period1').asString := DateToStr(dtDate1.Date)
+//        else
+//           ADODataSet1.FieldByName('Period1').asString := DateToStr(dtDate2.Date);
+//        ADODataSet1.post;
+//        tRecCtr := tRecCtr + 1;
+//        ADODataSet1.MoveBy(1)
+//      end;
+
+    if ADODATASET1.RecordCount > 0 then
+      begin
+        DataSource1.DataSet := ADODataSet1;
+        DBGrid1.DataSource := DataSource1;
+        DBGrid1.Refresh;
+
+        DBGrid1.Columns[0].Width := 60;
+        DBGrid1.Columns[1].Width := 150;
+        DBGrid1.Columns[2].Width := 60;
+        DBGrid1.Columns[3].Width := 90;
+      end
+    end;
+
+procedure TfrmHolidayMaintenance.FormShow(Sender: TObject);
+var
+  varAccessId : String;
+  varModuleDesc : String;
+
+  wYear, wMonth, wDay: Word;
+begin
+
+  //ClearAll();
+  cmdSave.Caption := '&Edit';
+
+  cmdAdd.Enabled := FALSE;
+  cmdSave.Enabled := FALSE;
+  cmdCancel.Enabled := FALSE;
+
+  gUser_ID := StrToInt(ActiveUserId);
+
+  sTranDate := DateToStr(Now) + ' ' + TimeToStr(Now);
+  sUserID := IntToStr(gUser_ID);
+
+
+  dsAccess.Close;
+  dsAccess.Connection := ADOConnection1;
+  dsAccess.CommandText := 'SELECT * FROM dtaUser_Access_Rights WHERE User_ID = ' + Chr(39) + IntToStr(gUser_ID) + Chr(39);
+  dsAccess.Active := TRUE;
+
+  //ShowMessage(IntToStr(dsAccess.RecordCount));
+  if dsAccess.RecordCount > 0 then
+  begin
+    dsAccess.First;
+    while not dsAccess.Eof do
+    begin
+      varAccessId := dsAccess.FieldByName('Access_Id').AsString;
+
+      dsModule.Close;
+      dsModule.Connection := ADOConnection1;
+      dsModule.CommandText := 'SELECT * FROM dtaAccess_Rights_Codes WHERE Access_Id = ' + varAccessId;
+      dsModule.Active := TRUE;
+
+      if dsModule.RecordCount > 0 then
+      begin
+        varModuleDesc := dsModule.FieldByName('Program_Module').AsString;
+
+        case StringToCaseSelect(varModuleDesc,['Holiday Maintenance [Add]','Holiday Maintenance [Edit]','Holiday Maintenance [Delete]']) of
+          0:cmdAdd.Enabled := TRUE;
+          1:cmdSave.Enabled := TRUE;
+          2:cmdCancel.Enabled := TRUE;
+
+        end;
+      end;
+
+      dsAccess.Next;
+
+    end;
+   end;
+
+   InsertToLogFile(sTranDate, sUserID, 'Holiday Maintenance', 'Load', 'dtaHoliday_details', '');
+
+   
+   DecodeDate(Now, wYear, wMonth, wDay);
+
+   if wDay <= 15 then
+      dtDate1.Date := EncodeDateTime(wYear, wMonth, 1, 0, 0, 0, 0)
+   else
+      dtDate1.Date := EncodeDateTime(wYear, wMonth, 16, 0, 0, 0, 0);
+
+   TfrmHolidayMaintenance.dtDate1Change;
+end;
+
+function TfrmHolidayMaintenance.StringToCaseSelect(Selector : string; CaseList: array of string): Integer;
+var cnt: integer;
+begin
+   Result:=-1;
+   for cnt:=0 to Length(CaseList)-1 do
+begin
+     if CompareText(Selector, CaseList[cnt]) = 0 then
+     begin
+       Result:=cnt;
+       Break;
+     end;
+   end;
+end;
+
+procedure TfrmHolidayMaintenance.Button1Click(Sender: TObject);
+begin
+  Grid_Load;
+end;
+
+procedure TfrmHolidayMaintenance.LoadHolidayTypes();
+begin
+  dsModule.Close;
+  dsModule.CommandText := 'SELECT * FROM dtaHoliday_Type ORDER BY Holiday_Type';
+  dsModule.Connection := ADOConnection1;
+  dsModule.Active := TRUE;
+
+  cmbHolidayType.Clear;
+  if dsModule.RecordCount > 0 then
+  begin
+    dsModule.First;
+    while not dsModule.Eof do
+    begin
+      cmbHolidayType.AddItem (dsModule.FieldByName('Holiday_Type').AsString, cmbHolidayType);
+
+      dsModule.Next;
+    end;
+  end;
+end;
+
+
+procedure TfrmHolidayMaintenance.DBGrid1CellClick(Column: TColumn);
+var
+  i : Integer;
+begin
+  if DBGrid1.SelectedRows.Count > 0 then
+  begin
+    with DBGrid1.DataSource.DataSet do
+    begin
+      for i := 0 to DBGrid1.SelectedRows.Count-1 do
+      begin
+        GotoBookmark(Pointer(DBGrid1.SelectedRows.Items[i]));
+
+        TDate.Text := ADODataSet1.FieldByName('HDate').AsString;
+        cmbHolidayType.Text := ADODataSet1.FieldByName('Holiday_Type').AsString;
+        txtHolidayDesc.Text := ADODataSet1.FieldByName('Description').AsString;
+      end;
+    end;
+  end;
+end;
+
+procedure TfrmHolidayMaintenance.DBGrid1KeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+var
+  i : Integer;
+begin
+  if DBGrid1.SelectedRows.Count > 0 then
+  begin
+    with DBGrid1.DataSource.DataSet do
+    begin
+      for i := 0 to DBGrid1.SelectedRows.Count-1 do
+      begin
+        GotoBookmark(Pointer(DBGrid1.SelectedRows.Items[i]));
+
+        TDate.Text := ADODataSet1.FieldByName('HDate').AsString;
+        cmbHolidayType.Text := ADODataSet1.FieldByName('Holiday_Type').AsString;
+        txtHolidayDesc.Text := ADODataSet1.FieldByName('Description').AsString;
+      end;
+    end;
+  end;
+end;
+
+procedure TfrmHolidayMaintenance.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  Action := caFree;
+end;
+
+procedure TfrmHolidayMaintenance.InsertToLogFile(vDate, vUser, vModule, vCommand, vTable, vPIN: String);
+begin
+
+  dsLogFile.Close;
+  dsLogFile.CommandText := 'SELECT * FROM dtaLogFile';
+  dsLogFile.Active := TRUE;
+
+  with dsLogFile do
+  begin
+    Insert;
+      FieldByName('Tran_Date').AsString := vDate;
+      FieldByName('User_Id').AsString := vUser;
+      FieldByName('Module_Desc').AsString := vModule;
+      FieldByName('Command').AsString := vCommand;
+      FieldByName('Table_Name').AsString := vTable;
+      FieldByName('Employee_PIN').AsString := vPIN;
+      FieldByName('Remarks').AsString := 'Module log';
+
+    Post;
+
+  end;
+end;
+
+end.
+
+

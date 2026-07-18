@@ -1,0 +1,2068 @@
+// Name:  LogTimeMaintenance.pas
+// Description:  This window allows you to see log details of
+//     an employee during a specified period of time.  Daily
+//     time record correction can also be done here to eliminate
+//     excessive overtimes and questionable working hours.  Adding,
+//     editing, and deleting of their keyers' log times can be executed
+//     by supervisors / team leads in this form.
+
+unit LogTimeMaintenance;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, DB, ADODB, Grids, DBGrids, StdCtrls, ExtCtrls, ComCtrls, EmployeeList,
+  CommonModule, DateUtils;
+
+type
+  TfrmLogTimeMaintenance = class(TForm)
+    DataSource1: TDataSource;
+    ADOConnection1: TADOConnection;
+    ADODataSet1: TADODataSet;
+    GroupBox1: TGroupBox;
+    txtWorkDate: TEdit;
+    txtPIN: TEdit;
+    txtTimeIn: TEdit;
+    txtTimeOut: TEdit;
+    txtTimeInterval: TEdit;
+    GroupBox2: TGroupBox;
+    Shape1: TShape;
+    GridTime: TDBGrid;
+    GroupBox3: TGroupBox;
+    dtDate: TDateTimePicker;
+    btnShow: TButton;
+    optWorkingDate: TRadioButton;
+    optEmpPIN: TRadioButton;
+    txtEmpPIN: TEdit;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    GroupBox4: TGroupBox;
+    btnAdd: TButton;
+    btnEdit: TButton;
+    Button1: TButton;
+    btnEmpList: TButton;
+    dsUpdates: TADODataSet;
+    dsAdd: TADODataSet;
+    lblFormat: TLabel;
+    lblName: TLabel;
+    grpPeriod: TGroupBox;
+    cmbMonth: TComboBox;
+    opt115: TRadioButton;
+    opt1631: TRadioButton;
+    cmbYear: TComboBox;
+    Label7: TLabel;
+    Label8: TLabel;
+    lblTotalRegularHours: TLabel;
+    lblTotalOvertime: TLabel;
+    Label9: TLabel;
+    cmbBranch: TComboBox;
+    dsFillBranch: TADODataSet;
+    dsLogFile: TADODataSet;
+    dsModule: TADODataSet;
+    dsAccess: TADODataSet;
+    spEmployees: TADOStoredProc;
+    ADODataSet2: TADODataSet;
+    GroupBox6: TGroupBox;
+    txtOT: TEdit;
+    Label6: TLabel;
+    txtTimeOutSummary: TEdit;
+    txtTimeInSummary: TEdit;
+    Label10: TLabel;
+    Label11: TLabel;
+    lblAuthorized: TLabel;
+    cmbTaskID: TComboBox;
+    Label15: TLabel;
+    dsAdd1: TADODataSet;
+    ADODataSet3: TADODataSet;
+    GroupBox5: TGroupBox;
+    Label12: TLabel;
+    Label13: TLabel;
+    Label14: TLabel;
+    txtUser: TEdit;
+    txtUser_EmployeeName: TEdit;
+    txtJobPosition: TEdit;
+    txtLimit: TEdit;
+    Label16: TLabel;
+    btnExcessOT: TButton;
+    dsOvertime: TADODataSet;
+    ADODataSet4: TADODataSet;
+    ADODataSet5: TADODataSet;
+    btnFinalizeEditing: TButton;
+    procedure btnFinalizeEditingClick(Sender: TObject);
+    procedure btnExcessOTClick(Sender: TObject);
+    procedure GridTimeKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure FormActivate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+
+    procedure FormShow(Sender: TObject);
+    procedure btnAddClick(Sender: TObject);
+    procedure btnEditClick(Sender: TObject);
+    procedure ClearTxtBoxes();
+    procedure FillBranchCombo();
+    procedure WriteToFile();
+
+    procedure btnEmpListClick(Sender: TObject);
+    procedure optWorkingDateClick(Sender: TObject);
+    procedure optEmpPINClick(Sender: TObject);
+    procedure btnShowClick(Sender: TObject);
+    procedure GridTimeCellClick(Column: TColumn);
+    procedure btnCloseClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+
+    function StringToCaseSelect (Selector : string; CaseList: array of string): Integer;
+    procedure Add_Log;
+    procedure Delete_Log;
+    procedure Edit_Log;
+    procedure UpdateSummary(vDate1, vDate2: String);
+    procedure Display_Dtr;
+
+    procedure InsertToLogFile(vDate, vUser, vModule, vCommand, vTable, vPIN: String);
+    procedure UpdateSummaryByEmployee(vDate1, vDate2, vEmpPIN: String);
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmLogTimeMaintenance: TfrmLogTimeMaintenance;
+  varPIN    :   String;
+  sString   :   String;
+  sString1  :   String;
+  sString2  :   String;
+  sString3  :   String;
+  varDate1 : String;
+  varDate2 : String;
+
+  varEditTime1 : String;
+  varEditTime2 : String;
+
+  varTimeInterval, varOT, varRegHours, varTardiness : String;
+  varTimeIn, varTimeOut : String;
+  Time1, Time2, dtaTimeIn, dtaTimeOut : TDateTime;
+
+  varKeyer : String;
+  varLen : Integer;
+  varEditKeyerID, varEditTaskID : String;
+  gUser : String;
+  gUser_ID : Integer;
+  vEmpID : String;
+
+  sUserID : string;
+  sTranDate : string;  
+
+  d1, d2  : String;
+  days1, days2  : Integer;
+
+  vTIME_ID : String;
+
+implementation
+uses comobj;
+
+{$R *.dfm}
+
+procedure TfrmLogTimeMaintenance.Button1Click(Sender: TObject);
+var
+  i         :   Integer;
+  tID : String;
+begin
+  if GridTime.SelectedRows.Count > 0 then
+  begin
+
+    with GridTime.DataSource.DataSet do
+    begin
+      for i := 0 to GridTime.SelectedRows.Count-1 do
+      begin
+        GotoBookmark(Pointer(GridTime.SelectedRows.Items[i]));
+
+        sString1 := ADODataSet1.CommandText;
+
+        //log file variables
+//        varDate := DateToStr(Date);
+//        varPIN1 := txtPIN.Text;
+
+//        varCommand := 'Delete';
+//        varFieldName := 'All';
+//        varPrevValue := txtTimein.Text + ' - ' + txtTimeout.Text;
+//        varNewValue := '';
+
+//        InsertToLogFile(varDate, ActiveUserId, varModule, varCommand, varTable, '', varFieldName, varPIN1, varPrevValue, varNewValue);
+        Delete_log;
+
+        if dtDate.Enabled = TRUE then
+        begin
+          sString := DateToStr(ADODataSet1.FieldByName('Actual_In').AsDateTime);
+          sString2 := ADODataSet1.FieldByName('Employee_PIN').AsString;
+          sString3 := ADODataSet1.FieldByName('Actual_In').AsString;
+
+          ADOConnection1.Execute('UPDATE dtaTime_Detail SET IsDeleted = 1 WHERE Work_Date = ' + Chr(39) + sString + Chr(39) + ' AND Employee_PIN = ' + sString2 + ' AND Actual_In = ' + Chr(39) + sString3 + Chr(39));
+
+          //ADOConnection1.Execute('DELETE FROM dtaTime_Detail WHERE Work_Date = ' + Chr(39) + sString + Chr(39) + ' AND Employee_PIN = ' + sString2 + ' AND Actual_In = ' + Chr(39) + sString3 + Chr(39));
+        end
+        else
+        begin
+          sString := ADODataSet1.FieldByName('Work_Date').AsString;
+          tID := ADODataSet1.FieldByName('Time_ID').AsString;
+
+          ADOConnection1.Execute('UPDATE dtaTime_Detail SET IsDeleted = 1 WHERE Work_Date = ' + Chr(39) + sString + Chr(39) + ' AND Time_ID = ' + Chr(39) + tID + Chr(39));
+
+          //ADOConnection1.Execute('DELETE FROM dtaTime_Detail WHERE Work_Date = ' + Chr(39) + sString + Chr(39) + ' AND Time_ID = ' + Chr(39) + tID + Chr(39));
+        end;
+
+
+        ADODataSet1.Close;
+        ADODataSet1.Connection := ADOConnection1;
+
+        if optWorkingDate.Checked = TRUE then
+        begin
+          varDate := DateToStr(dtDate.Date);
+          ADODataSet1.CommandText := 'SELECT dtaTime_Detail.Employee_PIN, dtaEmployees.Employee_Name, Actual_In, Actual_Out, Sched_Out, Regular_Hours, OT, Remarks, AuthorizeOT, Branch_Code, TIME_ID ' +
+            'FROM dtaTime_Detail, dtaEmployees ' +
+            'WHERE Work_Date = ' +chr(39) + varDate + chr(39) +
+              ' AND dtaTime_Detail.Employee_PIN = dtaEmployees.Employee_PIN ' +
+              'AND ISNULL(IsDeleted,0) = 0 ' +
+              'AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39) +
+              ' ORDER BY dtaEmployees.Employee_Name, dtaTime_Detail.Actual_In';
+
+        end
+        else
+        begin
+
+
+      //query by date
+      if (cmbMonth.Text <> '') AND (cmbBranch.Text <> '') then
+      begin
+          days1 := 0;
+          days2 := 0;
+
+          d1 := IntToStr(cmbMonth.ItemIndex + 1) + ' ' + cmbYear.Text;
+
+          if opt115.Checked = TRUE then
+          begin
+            days1 := 1;
+           days2 := 15;
+          end
+          else if opt1631.Checked = TRUE then
+          begin
+            d2 := IntToStr(DaysInAMonth(StrToInt(cmbYear.Text),cmbMonth.ItemIndex + 1));
+
+            days1 := 16;
+            days2 := StrToInt(d2);
+          end;
+
+
+          d1 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days1) + '/' + cmbYear.Text + ' 12:00:00 AM';
+//          d2 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days2) + '/' + cmbYear.Text + ' 12:00:00 PM';
+
+          d2 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days2) + '/' + cmbYear.Text + ' 11:59:59 AM';
+
+          d2 := DateTimeToStr(IncDay(StrToDateTime(d2)));
+
+          //UpdateSummary(d1, d2);
+       end;
+
+
+          ADODataSet1.CommandText := 'SELECT Work_Date, Actual_In, Actual_Out, Regular_Hours, OT, Remarks, AuthorizeOT, Branch_Code ' +
+            'FROM dtaTime_Detail ' +
+            'WHERE Employee_PIN = ' + txtPIN.Text + ' ' +
+            'AND Work_Date BETWEEN ' + Chr(39) + d1 + Chr(39) +' AND ' + Chr(39) + d2 + Chr(39) +
+            ' AND ISNULL(IsDeleted,0) = 0 ' +
+            ' AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39);
+        end;
+
+        lblAuthorized.Caption := '';
+
+        ADODataSet1.Active := TRUE;
+
+        DataSource1.DataSet := ADODataSet1;
+
+        GridTime.DataSource := DataSource1;
+
+        Display_DTR;
+
+      end;
+    end;
+  end;
+  ClearTxtBoxes;
+end;
+
+procedure TfrmLogTimeMaintenance.FormCreate(Sender: TObject);
+begin
+  ADOConnection1.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+  ADOConnection1.Connected := TRUE;
+end;
+
+procedure TfrmLogTimeMaintenance.btnCloseClick(Sender: TObject);
+begin
+  ADODataSet1.Close;
+
+  ClearTxtBoxes();
+
+  frmLogTimeMaintenance.Close;
+end;
+
+procedure TfrmLogTimeMaintenance.GridTimeCellClick(Column: TColumn);
+var
+  i : Integer;
+  varOT : String;
+  tPIN : String;
+begin
+  if GridTime.SelectedRows.Count > 0 then
+  begin
+    with GridTime.DataSource.DataSet do
+    begin
+      for i := 0 to GridTime.SelectedRows.Count-1 do
+      begin
+        GotoBookmark(Pointer(GridTime.SelectedRows.Items[i]));
+
+        vTIME_ID := ADODataSet1.FieldByName('TIME_ID').AsString;
+
+        if optWorkingDate.Checked = TRUE then
+        begin
+          txtWorkDate.Text := DateToStr(dtDate.Date);
+          txtPIN.Text := ADODataSet1.FieldByName('Employee_PIN').AsString;
+
+          tPIN := Trim(txtPIN.Text);
+
+        end
+        else if optEmpPIN.Checked = TRUE then
+        begin
+          txtWorkDate.Text := ADODataSet1.FieldByName('Work_Date').AsString;
+          txtPIN.Text := varPIN;
+
+          tPIN := Trim(txtPIN.Text);
+        end;
+
+        txtTimeIn.Text := ADODataSet1.FieldByName('Actual_In').AsString;
+        txtTimeOut.Text := ADODataSet1.FieldByName('Actual_Out').AsString;
+        txtTimeInterval.Text := ADODataSet1.FieldByName('Regular_Hours').AsString;
+
+
+        //check dtaTime_Summary
+        ADODataSet2.Close;
+        ADODataSet2.CommandText := 'SELECT Actual_In, Actual_Out, OT, AuthorizeOT ' +
+          'FROM dtaTime_Summary ' +
+          'WHERE Work_Date = ' +
+          chr(39) + txtWorkDate.Text + chr(39) + ' AND Employee_PIN = ''' + tPIN + '''';
+        ADODataSet2.Active := TRUE;
+
+        if ADODataSet2.RecordCount > 0 then
+        begin
+          varOT := Trim(ADODataSet2.FieldByName('AuthorizeOT').AsString);
+
+          if varOT = 'Yes' then
+            lblAuthorized.Caption := 'Authorized'
+          else
+            lblAuthorized.Caption := '';
+
+          txtOT.Text := ADODataSet2.FieldByName('OT').AsString;
+          txtTimeInSummary.Text := ADODataSet2.FieldByName('Actual_In').AsString;
+          txtTimeOutSummary.Text := ADODataSet2.FieldByName('Actual_Out').AsString;
+
+        end
+        else
+        begin
+          txtOT.Text := '';
+          txtTimeInSummary.Text := '';
+          txtTimeOutSummary.Text := '';
+
+          lblAuthorized.Caption := '';
+        end;
+
+      end;
+    end;
+    btnAdd.Enabled := TRUE;
+    btnEdit.Enabled := TRUE;
+    Button1.Enabled := TRUE;
+
+
+    ADODataSet2.Close;
+    ADODataSet2.CommandText := 'SELECT * FROM dtaTimeSecurity';
+    ADODataSet2.Active := TRUE;
+
+    if ADODataSet2.RecordCount > 0 then
+    begin
+      //if ADODataSet2.FieldByName('tStatus').Value = TRUE then
+      if StrToDate(txtWorkDate.Text) > ADODataSet2.FieldByName('tTo').Value then
+      begin
+        {ShowMessage('Editing of time detail for this payroll period is currently locked!');
+
+        btnAdd.Enabled := FALSE;
+        btnEdit.Enabled := FALSE;
+        Button1.Enabled := FALSE;    }
+      end
+      else
+      begin
+        if (StrToDate(txtWorkDate.Text) < ADODataSet2.FieldByName('tFrom').Value) or (ADODataSet2.FieldByName('tStatus').Value = TRUE) then
+        begin
+          ShowMessage('Editing of previous time detail is strictly prohibited after payroll process!');
+
+          btnAdd.Enabled := FALSE;
+          btnEdit.Enabled := FALSE;
+          Button1.Enabled := FALSE;
+        end;
+      end;
+    end;
+
+    ADODataSet2.Close;
+
+    {ADODataSet2.CommandText := 'SELECT * FROM vwUsers WHERE username = ''' + gUser + '''';
+    ADODataSet2.Open;
+
+    if ADODataSet2.RecordCount > 0 then
+    begin
+      if ((ADODataSet2.FieldByName('Job_position_code').AsString <> 'ADMIN ASST')
+        and (ADODataSet2.FieldByName('Job_position_code').AsString <> 'ACCTNG ASST')) then
+      begin
+        btnAdd.Enabled := FALSE;
+        btnEdit.Enabled := FALSE;
+        Button1.Enabled := FALSE;
+      end;
+    end;
+
+    ADODataSet2.Close;
+                     }
+  end;
+end;
+
+procedure TfrmLogTimeMaintenance.btnShowClick(Sender: TObject);
+var
+  sEmpPrimaryTaskId : string;
+begin
+  // get employee primary task id
+  ADODataSet1.Close;
+  ADODataSet1.Connection := ADOConnection1;
+  ADODataSet1.CommandText := 'SELECT TOP 1 ISNULL(Primary_Task_ID,'''') AS Primary_Task_ID ' +
+    'FROM dtaEmployees ' +
+    'WHERE Employee_PIN = ''' + txtEmpPIN.Text + ''' ';
+  ADODataSet1.Active := TRUE;
+
+  sEmpPrimaryTaskId := ADODataSet1.FieldByName('Primary_Task_ID').AsString;
+  if (sEmpPrimaryTaskId <> '') then
+  begin
+    // check if user have access to this primary task id / project
+    ADODataSet1.Close;
+    ADODataSet1.Connection := ADOConnection1;
+    ADODataSet1.CommandText := 'SELECT TOP 1 * ' +
+      'FROM dtaUsers_ProjectAccess ' +
+      'WHERE Primary_Task_ID = ''' + sEmpPrimaryTaskId + ''' ' +
+      'AND UserName = ''' + txtUser.Text + ''' ' +
+      'AND ISNULL(Deleted,0) = 0';
+    ADODataSet1.Active := TRUE;
+    if (ADODataSet1.RecordCount > 0) then
+    begin
+      Display_DTR;
+
+      btnAdd.Enabled := true;
+    end
+    else
+    begin
+
+      ADODataSet1.Close;
+      
+      ShowMessage('You do not have access to modify the DTR of this employee.  Please contact your immediate Supervisor.');
+    end;
+  end
+  else
+  begin
+
+    ADODataSet1.Close;
+    
+    ShowMessage('Employee does not have a Project assigned.  Please contact your immediate Supervisor.');
+  end;
+end;
+
+procedure TfrmLogTimeMaintenance.optEmpPINClick(Sender: TObject);
+begin
+  dtDate.Enabled := FALSE;
+  txtEmpPIN.Enabled := TRUE;
+  txtEmpPIN.SetFocus;
+
+  grpPeriod.Enabled := TRUE;
+end;
+
+procedure TfrmLogTimeMaintenance.optWorkingDateClick(Sender: TObject);
+begin
+  dtDate.Enabled := TRUE;
+  txtEmpPIN.Enabled := FALSE;
+  dtDate.SetFocus;
+
+  grpPeriod.Enabled := FALSE;
+end;
+
+procedure TfrmLogTimeMaintenance.btnEmpListClick(Sender: TObject);
+begin
+//  frmEmployeeList.Show;
+  with TfrmEmployeeList.Create(Application) do show;
+end;
+
+procedure TfrmLogTimeMaintenance.ClearTxtBoxes();
+begin
+  txtWorkDate.Text := '';
+  txtPIN.Text := '';
+  txtTimeIn.Text := '';
+  txtTimeOut.Text := '';
+  txtTimeInterval.Text := '';
+  txtOt.Text := '';
+end;
+
+procedure TfrmLogTimeMaintenance.btnEditClick(Sender: TObject);
+var
+  i : Double;
+  txt : String;
+
+  varD, varD1 : String;
+  varD2 : TDateTime;
+  btnSaveOT : Integer;
+begin
+
+  if btnEdit.Caption = '&EDIT' then
+  begin
+    txtTimeIn.ReadOnly := FALSE;
+    txtTimeOut.ReadOnly := FALSE;
+    txtTimeInterval.ReadOnly := FALSE;
+    txtOT.ReadOnly := FALSE;
+
+    btnEdit.Caption := '&UPDATE';
+
+    varEditTime1 := txtTimeIn.Text;
+    varEditTime2 := txtTimeOut.Text;
+
+    txtTimeIn.SetFocus;
+
+  end
+  else if btnEdit.Caption = '&UPDATE' then
+  begin
+
+    //update the database
+    varD := Trim(txtWorkDate.Text);
+    varD1 := Trim(txtTimeIn.Text);
+
+    varD2 := StrToDateTime(varD1);
+    varD1 := DateToStr(varD2);
+
+    //if (varD = varD1) then
+    //begin
+
+      //recent addition from oct 24, 2006
+      dsAdd.Close;
+      dsAdd.Connection := ADOConnection1;
+
+      dsAdd.CommandText := 'SELECT Primary_task_ID, Job_Position_Code, Rate_Hour FROM dtaEmployees WHERE ' +
+        'Employee_PIN = ' + txtPIN.Text;
+      dsAdd.Active := TRUE;
+
+//      if ((dsAdd.FieldByName('Job_Position_Code').AsString = 'SUP') OR
+//        (dsAdd.FieldByName('Job_Position_Code').AsString = 'TL') OR
+//        (dsAdd.FieldByName('Job_Position_Code').AsString = 'CMPOFCR') OR
+//        (dsAdd.FieldByName('Job_Position_Code').AsString = 'ACCTNT-SUB') OR
+//        (dsAdd.FieldByName('Job_Position_Code').AsString = 'HRSTAFF') OR
+//        (dsAdd.FieldByName('Job_Position_Code').AsString = 'F.ANALYST') OR
+//       (dsAdd.FieldByName('Job_Position_Code').AsString = 'IT') OR
+//        (dsAdd.FieldByName('Job_Position_Code').AsString = 'ADMIN ASST') OR
+//        (dsAdd.FieldByName('Job_Position_Code').AsString = 'IT') OR
+//        (dsAdd.FieldByName('Job_Position_Code').AsString = 'PRODMGR')) then
+      //if (dsAdd.FieldByName('Primary_Task_ID').AsString = 'ADMIN')
+      //  and (dsAdd.FieldByName('Rate_Hour').Value = 0) then
+      //begin
+
+      //  txtTimeIn.ReadOnly := TRUE;
+      //  txtTimeOut.ReadOnly := TRUE;
+      //  txtTimeInterval.ReadOnly := TRUE;
+      //  txtOT.ReadOnly := TRUE;
+
+      //  btnAdd.Enabled := TRUE;
+      //  Button1.Enabled := TRUE;
+
+      //  btnEdit.Caption := '&EDIT';
+
+
+      //  ShowMessage('Successfully updated!');
+
+      //  Display_DTR;
+
+      //  Edit_log;
+      //end
+      //else
+      //begin
+
+        dsAdd.Close;
+        dsAdd.Connection := ADOConnection1;
+        dsAdd.CommandText := 'SELECT * ' +
+          'FROM dtaTime_Detail ' +
+          'WHERE Work_Date = ' + Chr(39) + Trim(txtWorkDate.Text) + Chr(39) +
+            ' AND Employee_PIN = ' + txtPIN.Text + ' ' +
+            'AND ISNULL(IsDeleted,0) = 0 ' +
+            'AND Actual_In = ' + Chr(39) + Trim(txtTimeIn.Text) + Chr(39) + ' ' +
+            'AND Actual_Out = ' +Chr(39) + Trim(txtTimeOut.Text) + Chr(39);
+        dsAdd.Active := TRUE;
+
+        if (dsAdd.RecordCount = 0) then
+        begin
+          sString := DateToStr(ADODataSet1.FieldByName('Actual_In').AsDateTime);
+
+          if txtTimeIn.Text <> '' then
+        //update time_interval, ot, regular hours and tardiness
+            Time1 := StrToDateTime(txtTimeIn.Text)
+          else
+            Time1 := 0;
+
+          if txtTimeOut.Text <> '' then
+            Time2 := StrToDateTime(txtTimeOut.Text)
+          else
+            Time2 := 0;
+        //open dtaKeyerSchedule table to get the time in and time out of an employee
+          dsUpdates.Connection := ADOConnection1;
+
+          if optWorkingDate.Checked = TRUE then
+          begin
+            sString1 := ADODataSet1.FieldByName('Employee_PIN').AsString;
+
+            dsUpdates.Close;
+            dsUpdates.CommandText := 'SELECT * FROM dtaKeyerSchedule WHERE Work_Date = ' + Chr(39) + sString + Chr(39)
+              + ' AND Employee_PIN = ' + sString1;
+          end
+          else if optEmpPIN.Checked = TRUE then
+          begin
+            dsUpdates.Close;
+            dsUpdates.CommandText := 'SELECT * FROM dtaKeyerSchedule WHERE Work_Date = ' + Chr(39) + sString + Chr(39)
+              + ' AND Employee_PIN = ' + varPIN;
+          end;
+
+          dsUpdates.Active := TRUE;
+
+          if dsUpdates.RecordCount > 0 then
+          begin
+            dtaTimeIn := dsUpdates.FieldByName('Start_Time').AsDateTime;
+            dtaTimeOut := dsUpdates.FieldByName('End_Time').AsDateTime;
+
+          //compute for tardiness
+            if Time1 > dtaTimeIn then
+            begin
+              varTardiness := FloatToStr(MinuteSpan(dtaTimeIn, Time1));
+              Time1 := Time1;
+            end
+            else
+            begin
+              i := 0;
+              varTardiness := FloatToStr(i);
+              Time1 := dtaTimeIn;
+            end;
+
+            varRegHours := FloatToStr(MinuteSpan(Time1,dtaTimeOut));
+
+            varTardiness := FloatToStr(StrToFloat(varTardiness) / 60);
+            varRegHours := FloatToStr(StrToFloat(varRegHours) / 60);
+          end
+          else
+          begin
+            i := 0.00;
+            varTardiness := FloatToStr(i);
+            varRegHours := FloatToStr(i);
+          end;
+
+          varTimeInterval := FloatToStr(MinuteSpan(Time1, Time2));
+          varTimeInterval := FloatToStr(StrToFloat(varTimeInterval) / 60);
+
+          if StrToFloat(varTimeInterval) > 8 then
+          begin
+            varOT := FloatToStr(StrToFloat(varTimeInterval) - 8.00);
+            varRegHours := '8.00';
+          end
+          else
+          begin
+            varRegHours := varTimeInterval;
+            varOT := '0';
+         end;
+
+
+          if StrToFloat(varOT) < 0 then
+          begin
+            i := 0;
+            varOT := FloatToStr(i);
+         end
+          else if StrToFloat(varOT) > 30 then
+          begin
+            i := 0;
+            varOT := FloatToStr(i);
+          end;
+
+
+        //verify OT
+          if (StrToFloat(varOT) > 5) then
+          begin
+            btnSaveOT := Messagedlg('Overtime of this employee is: ' + varOT + ', do you want to save it anyway?', mtConfirmation,[mbYes,mbNo],0);
+            if (btnSaveOT = mrYes) then
+            begin
+              varOT := varOT;
+            end
+            else
+            begin
+              i := 0;
+              varOT := FloatToStr(i);
+              exit;
+            end;
+          end;
+
+          if optWorkingDate.Checked = TRUE then
+          begin
+            sString1 := ADODataSet1.FieldByName('Employee_PIN').AsString;
+
+          //update the edited time in and time out
+            ADOConnection1.Execute('UPDATE dtaTime_Detail SET Actual_In = ' + Chr(39) + txtTimeIn.Text + Chr(39) + ' ,Actual_Out = ' + Chr(39) + txtTimeOut.Text + Chr(39) +
+                ', IsModified = 1 WHERE TIME_ID = ' + vTIME_ID);
+    //          ' WHERE Work_Date = ' + Chr(39) + sString + Chr(39) + ' AND Employee_PIN = ' + sString1);
+
+
+          //update the time interval, ot, regular hours and tardiness
+            txt := ' ';
+            ADOConnection1.Execute('UPDATE dtaTime_Detail SET Remarks = ' + Chr(39) + txt + Chr(39) + ' ,Time_Interval = ' + varTimeInterval + ' ,OT = ' + varOT +
+              ' ,Tardiness = ' + varTardiness + ' ,Regular_Hours = ' + varRegHours +
+              ', IsModified = 1 WHERE TIME_ID = ' + vTIME_ID);
+    //          ' WHERE Work_Date = ' + Chr(39) + sString + Chr(39) + ' AND Employee_PIN = ' + sString1);
+
+          end
+          else if optEmpPIN.Checked = TRUE then
+          begin
+            sString1 := txtPIN.Text;
+            ADOConnection1.Execute('UPDATE dtaTime_Detail SET Actual_In = ' + Chr(39) + txtTimeIn.Text + Chr(39) + ' ,Actual_Out = ' + Chr(39) + txtTimeOut.Text + Chr(39) +
+                ', IsModified = 1 WHERE TIME_ID = ' + vTIME_ID);
+    //          ' WHERE Work_Date = ' + Chr(39) + sString + Chr(39) + ' AND Employee_PIN = ' + sString1);
+
+          //update the time interval, ot, regular hours and tardiness
+            ADOConnection1.Execute('UPDATE dtaTime_Detail SET Remarks = ' + Chr(39) + txt + Chr(39) + ' ,Time_Interval = ' + varTimeInterval + ' ,OT = ' + varOT +
+             ' ,Tardiness = ' + varTardiness + ' ,Regular_Hours = ' + varRegHours +
+                ', IsModified = 1 WHERE TIME_ID = ' + vTIME_ID);
+    //         ' WHERE Work_Date = ' + Chr(39) + sString + Chr(39) + ' AND Employee_PIN = ' + sString1);
+
+          end;
+
+          txtTimeIn.ReadOnly := TRUE;
+          txtTimeOut.ReadOnly := TRUE;
+          txtTimeInterval.ReadOnly := TRUE;
+          txtOT.ReadOnly := TRUE;
+
+          btnAdd.Enabled := TRUE;
+          Button1.Enabled := TRUE;
+
+
+
+        //view dataset details upon updating
+         if optWorkingDate.Checked = TRUE then
+         begin
+           ADODataSet1.Close;
+           varDate := DateToStr(dtDate.Date);
+
+          ADODataSet1.Close;
+          ADODataSet1.CommandText := 'SELECT dtaTime_Detail.Employee_PIN, dtaEmployees.Employee_Name, Actual_In, Actual_Out, Regular_Hours, OT, Time_id, Remarks, AuthorizeOT, Branch_Code ' +
+            'FROM dtaTime_Detail, dtaEmployees ' +
+            'WHERE Work_Date = ' +chr(39) + varDate + chr(39) + ' ' +
+            'AND dtaTime_Detail.Employee_PIN = dtaEmployees.Employee_PIN ' +
+            'AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39) + ' ' +
+            'AND ISNULL(IsDeleted,0) = 0 ' +
+            'ORDER BY dtaEmployees.Employee_Name, dtaTime_Detail.Actual_In';
+
+    //      ADODataSet1.CommandText := 'SELECT TimeInterval.Employee_PIN, dtaEmployees.Employee_Name, Actual_In, Actual_Out, Time_In, Time_Out, Time_Interval, OT, Regular_Hours, Remarks, AuthorizeOT FROM TimeInterval WHERE Work_Date = ' +
+    //          chr(39) + varDate + chr(39) + ' AND TimeInterval.Employee_PIN = dtaEmployees.Employee_PIN ORDER BY dtaEmployees.Employee_Name';
+
+          varDate1 := varDate + ' 12:00:00 AM';
+          varDate2 := varDate + ' 11:59:59 PM';
+
+          //UpdateSummary(varDate1, varDate2);
+
+        end
+        else if optEmpPIN.Checked = TRUE then
+        begin
+    //      ADODataSet1.Close;
+    //      ADODataSet1.CommandText := 'SELECT Work_Date, Actual_In, Actual_Out, Time_In, Time_Out, Time_Interval, OT, Regular_Hours, Remarks, AuthorizeOT FROM TimeInterval WHERE Employee_PIN = ' +
+    //        txtPIN.Text;
+
+          ADODataSet1.Close;
+          ADODataSet1.CommandText := 'SELECT Work_Date, Actual_In, Actual_Out, Regular_Hours, OT, Time_Id, Remarks, AuthorizeOT, Branch_Code ' +
+            'FROM dtaTime_Detail ' +
+            'WHERE Employee_PIN = ''' + txtEmpPIN.Text + ''' ' +
+            'AND Work_Date BETWEEN ' + d1 + ' AND ' + d2 + ' ' +
+            'AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39) + ' ' +
+            'AND ISNULL(IsDeleted,0) = 0 ' +
+            'ORDER BY Actual_In';
+
+
+          //query by date
+          if (cmbMonth.Text <> '') AND (cmbBranch.Text <> '') then
+          begin
+              days1 := 0;
+              days2 := 0;
+
+              d1 := IntToStr(cmbMonth.ItemIndex + 1) + ' ' + cmbYear.Text;
+
+              if opt115.Checked = TRUE then
+              begin
+                days1 := 1;
+                days2 := 15;
+              end
+              else if opt1631.Checked = TRUE then
+              begin
+                d2 := IntToStr(DaysInAMonth(StrToInt(cmbYear.Text),cmbMonth.ItemIndex + 1));
+
+                days1 := 16;
+                days2 := StrToInt(d2);
+              end;
+
+
+              d1 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days1) + '/' + cmbYear.Text + ' 12:00:00 AM';
+    //          d2 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days2) + '/' + cmbYear.Text + ' 11:59:59 PM';
+              d2 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days2) + '/' + cmbYear.Text + ' 11:59:59 AM';
+
+              d2 := DateTimeToStr(IncDay(StrToDateTime(d2)));
+
+          //UpdateSummary(d1, d2);
+       //end;
+    end;
+    ADODataSet1.Active := TRUE;
+
+   //log file variable
+//   varId := ADODataSet1.FieldByName('Time_ID').AsString;
+//   varFieldName := 'Time In - Time Out';
+//   varNewValue := txtTimeIn.Text + ' - ' + txtTimeOut.Text;
+//   varPIN1 := sString1;
+
+    GridTime.Refresh;
+
+//   InsertToLogFile(varDate1, ActiveUserId, varModule, varCommand, varTable, varID, varFieldName, varPIN1, varPrevValue, varNewValue);
+    Edit_log;
+
+    Display_DTR;
+
+    btnEdit.Caption := '&EDIT';
+
+    ShowMessage('Successfully updated!');
+    end
+    else
+    begin
+      ShowMessage('Keyed Employee PIN already logged for this day!');
+
+      btnEdit.Caption := '&EDIT';
+    end;
+   end;
+   {end;
+   else
+   begin
+     ShowMessage('Please make sure that the Log Time or Time in corresponds to the same working date given above.');
+     txtTimeIn.SetFocus;
+   end;}
+ end;
+  //ADOConnection1.Execute('UPDATE TimeInterval SET)
+end;
+
+procedure TfrmLogTimeMaintenance.UpdateSummaryByEmployee(vDate1, vDate2, vEmpPIN: String);
+//var
+//  vEmpPINInt : Integer;
+begin
+
+  //vEmpPINInt := StrToIntDef(vEmpPIN, 0);
+
+  //update summary here
+  spEmployees.Connection := ADOConnection1;
+  spEmployees.ProcedureName := 'spTIME_EXTRACT_EMPLOYEE';
+  spEmployees.Parameters.Refresh;
+
+  spEmployees.Parameters.ParamByName('@EMPPIN').Value := vEmpPIN;
+  spEmployees.Parameters.ParamByName('@d1').Value := vDate1;
+  spEmployees.Parameters.ParamByName('@d2').Value := vDate2;
+  spEmployees.ExecProc;
+//  spEmployees.Active := TRUE;
+end;
+
+procedure TfrmLogTimeMaintenance.UpdateSummary(vDate1, vDate2: String);
+begin
+  //update summary here
+  spEmployees.Connection := ADOConnection1;
+  spEmployees.ProcedureName := 'spTIME_EXTRACT';
+  spEmployees.Parameters.Refresh;
+
+  spEmployees.Parameters.ParamByName('@d1').Value := vDate1;
+  spEmployees.Parameters.ParamByName('@d2').Value := vDate2;
+  spEmployees.ExecProc;
+//  spEmployees.Active := TRUE;
+end;
+
+procedure TfrmLogTimeMaintenance.Display_DTR;
+var
+  tlRegHours, tlOT  : Double;
+  tPIN : String;
+  sPrevYear : String;
+
+begin
+  ADODataSet1.Close;
+  ADODataSet1.Connection := ADOConnection1;
+
+  if optWorkingDate.Checked = TRUE then
+  begin
+    varDate := DateToStr(dtDate.Date);
+    //ADODataSet1.CommandText := 'SELECT Employee_PIN, Time_In, Time_Out, Time_Interval, OT, Regular_Hours Remarks FROM TimeInterval WHERE Work_Date = ' +
+    //    chr(39) + varDate + chr(39);
+    if cmbBranch.Text <> '' then
+    begin
+      ADODataSet1.CommandText := 'SELECT dtaTime_Detail.Employee_PIN, dtaEmployees.Employee_Name, Actual_In, Actual_Out, Regular_Hours, OT, Remarks, AuthorizeOT, Branch_Code, Time_ID ' +
+        'FROM dtaTime_Detail, dtaEmployees ' +
+        'WHERE Work_Date = ' +chr(39) + varDate + chr(39) +
+          ' AND dtaTime_Detail.Employee_PIN = dtaEmployees.Employee_PIN ' +
+          'AND ISNULL(IsDeleted,0) = 0 ' +
+          'AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39) +
+          ' ORDER BY dtaEmployees.Employee_Name, dtaTime_Detail.Actual_In';
+          
+      ADODataSet1.Active := TRUE;
+      lblName.Caption := '';
+      if ADODataSet1.RecordCount > 0 then
+      begin
+        tPIN := ADODataSet1.FieldByName('Employee_PIN').AsString;
+        ADODataSet2.Close;
+        ADODataSet2.CommandText := 'SELECT Actual_In, Actual_Out, OT ' +
+          'FROM dtaTime_Summary ' +
+          'WHERE Work_Date = ' +
+//          chr(39) + varDate + chr(39) + ' AND Task_ID = ' + Chr(39) + cmbTaskID.Text + Chr(39) + ' AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39) + ' AND Employee_PIN = ''' + tPIN + '''';
+          chr(39) + varDate + chr(39) + ' AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39) + ' AND Employee_PIN = ''' + tPIN + '''';
+        ADODataSet2.Active := TRUE;
+      end
+      else
+      begin
+        {ClearTxtBoxes;
+        btnAdd.Enabled := FALSE;
+        btnEdit.Enabled := FALSE;
+        Button1.Enabled := FALSE;}
+      end;
+    end
+    else
+      ShowMessage('Please select the location of the company!');
+  end
+  else if (optEmpPIN.Checked = TRUE) and (txtEmpPIN.Text <> '') then
+  begin
+
+  //query by date
+  if (cmbMonth.Text <> '') AND (cmbBranch.Text <> '') then
+  begin
+    {days1 := 0;
+    days2 := 0;
+
+    d1 := IntToStr(cmbMonth.ItemIndex + 1) + ' ' + cmbYear.Text;
+
+    if opt115.Checked = TRUE then
+    begin
+      days1 := 1;
+      days2 := 15;
+    end
+    else if opt1631.Checked = TRUE then
+    begin
+      d2 := IntToStr(DaysInAMonth(StrToInt(cmbYear.Text),cmbMonth.ItemIndex + 1));
+
+      days1 := 16;
+      days2 := StrToInt(d2);
+    end; }
+
+    if (cmbMonth.ItemIndex = 0) then
+    begin
+      sPrevYear := IntToStr(StrToInt(cmbYear.Text) - 1);
+
+      d1 :=  Chr(39) + '12/21/' + sPrevYear + Chr(39);
+      d2 :=  Chr(39) + IntToStr(cmbMonth.ItemIndex + 1) + '/20/' + cmbYear.Text + Chr(39);
+    end
+    else
+    begin
+      d1 :=  Chr(39) + IntToStr(cmbMonth.ItemIndex) + '/21/' + cmbYear.Text + Chr(39);
+      d2 :=  Chr(39) + IntToStr(cmbMonth.ItemIndex + 1) + '/20/' + cmbYear.Text + Chr(39);
+    end;
+
+    ADODataSet1.Close;
+    ADODataSet1.CommandText := 'SELECT * FROM dtaEmployees WHERE Employee_PIN = ' + txtEmpPIN.Text;
+    ADODataSet1.Active := TRUE;
+
+    lblName.Caption := ADODataSet1.FieldByName('Employee_Name').AsString;
+
+    ADODataSet1.Close;
+    ADODataSet1.CommandText := 'SELECT Work_Date, Actual_In, Actual_Out, Regular_Hours, OT, Remarks, AuthorizeOT, Branch_Code, Time_ID ' +
+      'FROM dtaTime_Detail ' +
+      'WHERE Employee_PIN = ' + txtEmpPIN.Text + ' ' +
+      'AND Work_Date BETWEEN ' + d1 + ' AND ' + d2 + ' ' +
+      'AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39) + ' ' +
+      'AND ISNULL(IsDeleted,0) = 0 ' +
+      'ORDER BY Actual_In';
+
+    varPIN := txtEmpPIN.Text;
+
+    ADODataSet1.Active := TRUE;
+
+    if ADODataSet1.RecordCount > 0 then
+    begin
+      tlRegHours := 0;
+      tlOT := 0;
+        ADODataSet1.First;
+        while not ADODataSet1.eof do
+        begin
+
+          if (Trim(ADODataSet1.FieldByName('Remarks').AsString) <> '') then
+
+          else
+            tlRegHours := tlRegHours + ADODataSet1.FieldByName('Regular_Hours').AsFloat;
+
+          if (Trim(ADODataSet1.FieldByName('AuthorizeOT').AsString) = 'Yes') then
+            tlOT := tlOT + ADODataSet1.FieldByName('OT').AsFloat;
+
+          ADODataSet1.Next;
+        end;
+
+        lblTotalRegularHours.Caption := FloatToStr(tlRegHours);
+        lblTotalOvertime.Caption := FloatToStr(tlOT);
+    end
+    else
+    begin
+        lblTotalRegularHours.Caption := '0';
+        lblTotalOvertime.Caption := '0';
+
+
+        {ClearTxtBoxes;
+
+        btnAdd.Enabled := FALSE;
+        btnEdit.Enabled := FALSE;
+        Button1.Enabled := FALSE;}
+    end;
+  end;
+ end;
+end;
+
+procedure TfrmLogTimeMaintenance.btnAddClick(Sender: TObject);
+var
+  i : Double;
+  varD, varD1 : String;
+  varD2, varD3, varDTime : TDateTime;
+  btnSaveOT : Integer;
+begin
+  // ------ adding log time details here
+
+
+  if btnAdd.Caption = '&ADD' then
+  begin
+    ShowMessage('Please do not forget to choose the location when adding employee time!');
+
+    btnAdd.Caption := '&SAVE';
+
+    lblFormat.Visible := TRUE;
+
+    //enable textboxes
+    txtWorkDate.Enabled := TRUE;
+    txtPIN.Enabled := TRUE;
+    txtTimeIn.ReadOnly := FALSE;
+    txtTimeOut.ReadOnly := FALSE;
+
+    btnEdit.Enabled := FALSE;
+    Button1.Enabled := FALSE;
+
+    ClearTxtBoxes();
+
+    txtWorkDate.SetFocus;
+   end
+   else if btnAdd.Caption = '&SAVE' then
+   begin
+   //update table timeinterval in adding the record
+
+    varD := Trim(txtWorkDate.Text);
+    varD1 := Trim(txtTimeIn.Text);
+
+    varD2 := StrToDateTime(varD1);
+    varD1 := DateToStr(varD2);
+
+    //if (varD = varD1) then
+    //begin
+
+      //recent addition from oct 24, 2006
+      dsAdd.Close;
+      dsAdd.Connection := ADOConnection1;
+
+      dsAdd.CommandText := 'SELECT Job_Position_Code FROM dtaEmployees WHERE ' +
+        'Employee_PIN = ' + txtPIN.Text;
+      dsAdd.Active := TRUE;
+
+      if ((dsAdd.FieldByName('Job_Position_Code').AsString = 'SUP11') OR
+        (dsAdd.FieldByName('Job_Position_Code').AsString = 'TL11') OR
+        (dsAdd.FieldByName('Job_Position_Code').AsString = 'CMPOFCR11') OR
+        (dsAdd.FieldByName('Job_Position_Code').AsString = 'ACCTNT-SUB11') OR
+        (dsAdd.FieldByName('Job_Position_Code').AsString = 'HRSTAFF11') OR
+        (dsAdd.FieldByName('Job_Position_Code').AsString = 'IT11') OR
+        (dsAdd.FieldByName('Job_Position_Code').AsString = 'PRODMGR11')) then
+      begin
+
+        btnAdd.Caption := '&ADD';
+
+        lblFormat.Visible := FALSE;
+
+        txtWorkDate.Enabled := FALSE;
+        txtPIN.Enabled := FALSE;
+        txtTimeIn.ReadOnly := TRUE;
+        txtTimeOut.ReadOnly := TRUE;
+
+        btnEdit.Enabled := TRUE;
+        Button1.Enabled := TRUE;
+
+        ShowMessage('Successfully added!');
+
+        Display_DTR;
+
+        Add_Log;
+      end
+      else
+      begin
+        if ((txtWorkDate.Text <> '') and (txtPIN.Text <> '') and (txtTimeIn.Text <> '') and (cmbBranch.Text <> '')) then
+        begin
+
+          btnAdd.Caption := '&ADD';
+
+          lblFormat.Visible := FALSE;
+
+          txtWorkDate.Enabled := FALSE;
+          txtPIN.Enabled := FALSE;
+          txtTimeIn.ReadOnly := TRUE;
+          txtTimeOut.ReadOnly := TRUE;
+
+          btnEdit.Enabled := TRUE;
+          Button1.Enabled := TRUE;
+
+          //Connect to database
+          dsAdd.Close;
+          dsAdd.Connection := ADOConnection1;
+
+          //check if logged time already exists in time_detail table
+          dsAdd.CommandText := 'SELECT * ' +
+            'FROM dtaTime_Detail ' +
+            'WHERE Work_Date = ' + Chr(39) + Trim(txtWorkDate.Text) + Chr(39) +
+            ' AND Employee_PIN = ' + txtPIN.Text + ' ' +
+            'AND Actual_In = ' + Chr(39) + Trim(txtTimeIn.Text) + Chr(39) + ' ' +
+            'AND ISNULL(IsDeleted,0) = 0 ' +
+            'AND Actual_Out = ' + Chr(39) + Trim(txtTimeOut.Text) + Chr(39);
+
+          //ShowMessage(dsAdd.CommandText);
+
+          dsAdd.Active := TRUE;
+
+          if (dsAdd.RecordCount = 0) then
+          begin
+            with dsAdd do
+            begin
+
+              //check if time is overlapping
+              dsAdd1.Close;
+              dsAdd1.Connection := ADOConnection1;
+              dsAdd1.CommandText := 'SELECT * ' +
+                'FROM dtaTime_Detail ' +
+                'WHERE Work_Date = ' + Chr(39) + Trim(txtWorkDate.Text) + Chr(39) +
+                ' AND Employee_PIN = ' + txtPIN.Text + ' ' +
+                'AND ISNULL(IsDeleted,0) = 0 ' +
+                'AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39);
+              dsAdd1.Active := TRUE;
+
+              if (dsAdd1.RecordCount > 0) then
+              begin
+                varD := dsAdd1.FieldByName('Actual_In').AsString;
+                varD1 := dsAdd1.FieldByName('Actual_Out').AsString;
+
+                varD2 := StrToDateTime(varD);
+                varD3 := StrToDateTime(varD1);
+
+                varDTime := StrToDateTime(Trim(txtTimeIn.Text));
+
+                if ((varDTime > varD2) and (varDTime < varD3)) then
+                  ShowMessage('Keyed employee PIN has already logged in for this day!')
+                else
+                begin
+                  //ShowMessage('It is not within');
+
+                  Insert;
+                  FieldByName('Work_Date').AsDateTime := StrToDateTime(txtWorkDate.Text);
+                  FieldByName('Employee_PIN').AsString := txtPIN.Text;
+                  FieldByName('Actual_In').AsString := txtTimeIn.Text;
+                  FieldByName('AuthorizeOT').AsString := 'Yes';
+
+                  //log file variables
+                  varDate1 := DateToStr(Date);
+                  varPIN1 := txtPIN.Text;
+
+                  //get the employee name
+                  dsUpdates.Close;
+                  dsUpdates.Connection := ADOConnection1;
+                  dsUpdates.CommandText := 'SELECT * FROM dtaEmployees WHERE Employee_PIN = ' + varPIN1;
+                  dsUpdates.Active := TRUE;
+
+                  if dsUpdates.RecordCount > 0 then
+                    sString3 := dsUpdates.FieldByName('Employee_Name').AsString;
+
+
+                  //update time interval, ot, working hours
+                  Time1 := StrToDateTime(txtTimeIn.Text);
+
+                  Time2 := StrToDateTime(txtTimeOut.Text);
+
+                  //open dtaKeyerSchedule table to get the time in and time out of an employee
+                  dsUpdates.Close;
+                  dsUpdates.Connection := ADOConnection1;
+
+                  sString1 := txtPIN.Text;
+                  sString := txtWorkDate.Text;
+
+                  varTimeInterval := FloatToStr(MinuteSpan(Time1, Time2));
+                  varTimeInterval := FloatToStr(StrToFloat(varTimeInterval) / 60);
+
+                  if StrToFloat(varTimeInterval) > 8 then
+                  begin
+                    varOT := FloatToStr(StrToFloat(varTimeInterval) - 8.00);
+                    varRegHours := '8.00';
+                  end
+                  else
+                  begin
+                    varRegHours := varTimeInterval;
+                    varOT := '0';
+                  end;
+
+                  if ((StrToFloat(varOT) < 0) or (StrToFloat(varOT) > 30)) then
+                  begin
+                    i := 0;
+                    varOT := FloatToStr(i);
+                  end;
+
+
+                  //additional fields
+                  FieldByName('Employee_Name').AsString := sString3;
+                  FieldByName('Actual_Out').AsString := txtTimeOut.Text;
+
+                  FieldByName('Time_Interval').AsString := varTimeInterval;
+
+                  if (StrToFloat(varOT) > 5) then
+                  begin
+                    btnSaveOT := Messagedlg('Overtime of this employee is: ' + varOT + ', do you want to save it anyway?', mtConfirmation,[mbYes,mbNo],0);
+
+                    if (btnSaveOT = mrYes) then
+                    begin
+                      FieldByName('OT').AsString := varOT;
+                    end
+                  else
+                  begin
+                    i := 0;
+                    varOT := FloatToStr(i);
+                    FieldByName('OT').AsString := varOT;
+                    exit;
+                  end;
+                end
+                else
+                begin
+                  FieldByName('OT').AsString := varOT;
+                end;
+
+                //FieldByName('OT').AsString := varOT;
+                FieldByName('Tardiness').AsString := varTardiness;
+                FieldByName('Regular_Hours').AsString := varRegHours;
+                //FieldByName('Remarks').AsString := varRemarks;
+
+                if cmbBranch.Text <> '' then
+                begin
+                  FieldByName('Branch_Code').AsString := cmbBranch.Text;
+                  Post;
+                end
+                else
+                  ShowMessage('Please choose employee location!');
+
+                //update dtaTime_Summary table
+                if (cmbMonth.Text <> '') AND (cmbBranch.Text <> '') then
+                begin
+                  days1 := 0;
+                  days2 := 0;
+
+                  d1 := IntToStr(cmbMonth.ItemIndex + 1) + ' ' + cmbYear.Text;
+
+                  if opt115.Checked = TRUE then
+                  begin
+                    days1 := 1;
+                    days2 := 15;
+                  end
+                  else if opt1631.Checked = TRUE then
+                  begin
+                    d2 := IntToStr(DaysInAMonth(StrToInt(cmbYear.Text),cmbMonth.ItemIndex + 1));
+
+                    days1 := 16;
+                    days2 := StrToInt(d2);
+                  end;
+
+
+                  d1 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days1) + '/' + cmbYear.Text + ' 12:00:00 AM';
+//                d2 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days2) + '/' + cmbYear.Text + ' 12:00:00 PM';
+
+                  d2 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days2) + '/' + cmbYear.Text + ' 11:59:59 AM';
+
+                  d2 := DateTimeToStr(IncDay(StrToDateTime(d2)));
+
+                  //UpdateSummary(d1, d2);
+              end;
+
+
+              ShowMessage('Successfully added!');
+
+              Display_DTR;
+
+              //end with
+           end;
+          //end of checking if there is overlapping
+            Add_Log;
+        end
+        else
+        begin
+          Insert;
+          FieldByName('Work_Date').AsDateTime := StrToDateTime(txtWorkDate.Text);
+          FieldByName('Employee_PIN').AsString := txtPIN.Text;
+          FieldByName('Actual_In').AsString := txtTimeIn.Text;
+          FieldByName('AuthorizeOT').AsString := 'Yes';
+
+          //log file variables
+          varDate1 := DateToStr(Date);
+          varPIN1 := txtPIN.Text;
+
+          //get the employee name
+          dsUpdates.Close;
+          dsUpdates.Connection := ADOConnection1;
+          dsUpdates.CommandText := 'SELECT * FROM dtaEmployees WHERE Employee_PIN = ' + varPIN1;
+          dsUpdates.Active := TRUE;
+
+          if dsUpdates.RecordCount > 0 then
+            sString3 := dsUpdates.FieldByName('Employee_Name').AsString;
+
+
+          //update time interval, ot, working hours
+          Time1 := StrToDateTime(txtTimeIn.Text);
+
+          Time2 := StrToDateTime(txtTimeOut.Text);
+
+          //open dtaKeyerSchedule table to get the time in and time out of an employee
+          dsUpdates.Close;
+          dsUpdates.Connection := ADOConnection1;
+
+          sString1 := txtPIN.Text;
+          sString := txtWorkDate.Text;
+
+
+          varTimeInterval := FloatToStr(MinuteSpan(Time1, Time2));
+          varTimeInterval := FloatToStr(StrToFloat(varTimeInterval) / 60);
+
+          if StrToFloat(varTimeInterval) > 8 then
+          begin
+            varOT := FloatToStr(StrToFloat(varTimeInterval) - 8.00);
+            varRegHours := '8.00';
+          end
+          else
+          begin
+            varRegHours := varTimeInterval;
+            varOT := '0';
+          end;
+
+          if ((StrToFloat(varOT) < 0) or (StrToFloat(varOT) > 30)) then
+          begin
+            i := 0;
+            varOT := FloatToStr(i);
+          end;
+
+          //additional fields
+          FieldByName('Employee_Name').AsString := sString3;
+          FieldByName('Actual_Out').AsString := txtTimeOut.Text;
+
+          FieldByName('Time_Interval').AsString := varTimeInterval;
+
+          if (StrToFloat(varOT) > 5) then
+          begin
+            btnSaveOT := Messagedlg('Overtime of this employee is: ' + varOT + ', do you want to save it anyway?', mtConfirmation,[mbYes,mbNo],0);
+            if (btnSaveOT = mrYes) then
+            begin
+              FieldByName('OT').AsString := varOT;
+            end
+            else
+            begin
+              i := 0;
+              varOT := FloatToStr(i);
+              FieldByName('OT').AsString := varOT;
+              exit;
+            end;
+          end
+          else
+          begin
+            FieldByName('OT').AsString := varOT;
+          end;
+
+          //FieldByName('OT').AsString := varOT;
+          FieldByName('Tardiness').AsString := varTardiness;
+          FieldByName('Regular_Hours').AsString := varRegHours;
+          //FieldByName('Remarks').AsString := varRemarks;
+
+          if cmbBranch.Text <> '' then
+          begin
+            FieldByName('Branch_Code').AsString := cmbBranch.Text;
+            Post;
+          end
+          else
+            ShowMessage('Please choose employee location!');
+
+
+          //update dtaTime_Summary table
+          if (cmbMonth.Text <> '') AND (cmbBranch.Text <> '') then
+          begin
+            days1 := 0;
+            days2 := 0;
+
+            d1 := IntToStr(cmbMonth.ItemIndex + 1) + ' ' + cmbYear.Text;
+
+            if opt115.Checked = TRUE then
+            begin
+              days1 := 1;
+              days2 := 15;
+            end
+            else if opt1631.Checked = TRUE then
+            begin
+              d2 := IntToStr(DaysInAMonth(StrToInt(cmbYear.Text),cmbMonth.ItemIndex + 1));
+
+              days1 := 16;
+              days2 := StrToInt(d2);
+            end;
+
+            d1 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days1) + '/' + cmbYear.Text + ' 12:00:00 AM';
+//          d2 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days2) + '/' + cmbYear.Text + ' 12:00:00 PM';
+            d2 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days2) + '/' + cmbYear.Text + ' 11:59:59 AM';
+
+            d2 := DateTimeToStr(IncDay(StrToDateTime(d2)));
+
+            //UpdateSummary(d1, d2);
+          end;
+
+          ShowMessage('Successfully added!');
+
+          Display_DTR;
+
+          Add_Log;
+
+          //end with
+        end;
+      end;
+    //end second if condition
+    end
+    else
+      ShowMessage('Keyed Employee PIN already logged for this day!');
+    end
+    else
+      ShowMessage('Please check the location or log details of the employee!');
+      //end first if condition
+
+    end;
+    {end
+    else
+    begin
+      ShowMessage('Please make sure that the Log Time or Time in corresponds to the same working date given above.');
+      txtWorkDate.SetFocus;
+    end; }
+  end;
+end;
+
+
+
+procedure TfrmLogTimeMaintenance.FillBranchCombo();
+var
+  varBranch : String;
+begin
+  dsFillBranch.Close;
+  dsFillBranch.CommandText := 'SELECT * FROM dtaBranches ORDER BY Branch_Code';
+  dsFillBranch.Connection := ADOConnection1;
+  dsFillBranch.Active := TRUE;
+
+  cmbBranch.Clear;
+  if dsFillBranch.RecordCount > 0 then
+  begin
+    dsFillBranch.First;
+    while not dsFillBranch.Eof do
+    begin
+      varBranch := dsFillBranch.FieldByName('Branch_Code').AsString;
+
+      cmbBranch.AddItem(varBranch, cmbBranch);
+
+      dsFillBranch.Next;
+    end;
+
+    if (cmbBranch.Items.Count > 0) then
+    begin
+      cmbBranch.ItemIndex := 0;
+    end;
+  end;
+end;
+
+procedure TfrmLogTimeMaintenance.FormShow(Sender: TObject);
+var
+  varAccessId : String;
+  varModuleDesc : String;
+begin
+
+  //vEmpId := CommonModule.ActiveUserId;
+  //vEmpId := '313';
+
+  Button1.Enabled := FALSE;
+  btnEdit.Enabled := FALSE;
+  btnAdd.Enabled := FALSE;
+
+  dsAccess.Close;
+  dsAccess.Connection := ADOConnection1;
+  dsAccess.CommandText := 'SELECT * FROM dtaUser_Access_Rights WHERE User_ID = ' + Chr(39) + vEmpId + Chr(39);
+  dsAccess.Active := TRUE;
+
+  //ShowMessage(IntToStr(dsAccess.RecordCount));
+  if dsAccess.RecordCount > 0 then
+  begin
+    dsAccess.First;
+    while not dsAccess.Eof do
+    begin
+      varAccessId := dsAccess.FieldByName('Access_Id').AsString;
+
+      dsModule.Close;
+      dsModule.Connection := ADOConnection1;
+      dsModule.CommandText := 'SELECT * FROM dtaAccess_Rights_Codes WHERE Access_Id = ' + varAccessId;
+      dsModule.Active := TRUE;
+
+      if dsModule.RecordCount > 0 then
+      begin
+        varModuleDesc := dsModule.FieldByName('Program_Module').AsString;
+
+        case StringToCaseSelect(varModuleDesc,['DTR Correction [Add]','DTR Correction [Update]','DTR Correction [Delete]']) of
+          0:btnAdd.Enabled := TRUE;
+          1:btnEdit.Enabled := TRUE;
+          2:Button1.Enabled := TRUE;
+
+        end;
+      end;
+
+      dsAccess.Next;
+
+    end;
+   end;
+
+  FillBranchCombo();
+
+  dtDate.Date := Now();
+  cmbYear.Text := FormatDateTime('yyyy', Now());
+end;
+
+function TfrmLogTimeMaintenance.StringToCaseSelect
+   (Selector : string;
+CaseList: array of string): Integer;
+var cnt: integer;
+begin
+   Result:=-1;
+   for cnt:=0 to Length(CaseList)-1 do
+begin
+     if CompareText(Selector, CaseList[cnt]) = 0 then
+     begin
+       Result:=cnt;
+       Break;
+     end;
+   end;
+end;
+
+procedure TfrmLogTimeMaintenance.WriteToFile();
+var
+  myFile : TextFile;
+  s1, s2 : String;
+  text : String;
+begin
+  s1 := 'HELLO WORLD!';
+  s2 := 'HELLO SAM!';
+
+  AssignFile(myFile,'sample.txt');
+  Rewrite(myFile);
+
+  Write(myFile, s1);
+  Writeln(myFile);
+  Write(myFile, s2);
+
+  CloseFile(myFile);
+
+
+  Reset(myFile);
+
+  while not eof(myFile) do
+  begin
+      ReadLn(myFile,text);
+      ShowMessage(text);
+  end;
+end;
+
+procedure TfrmLogTimeMaintenance.Delete_Log;
+var
+  SQL: String;
+begin
+  SQL :=       'INSERT INTO dtaLogFile ' ;
+  SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, ID, Employee_PIN, Remarks ) ' ;
+  SQL := SQL + 'VALUES ';
+  SQL := SQL + '( ';
+  SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+  SQL := SQL + IntToStr(gUser_ID) + ', ';
+  SQL := SQL + chr(39) + 'DTR Correction' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'Delete' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'dtaTime_Detail' + chr(39) + ', ';
+  SQL := SQL + vTime_ID + ', ';
+  SQL := SQL + txtPIN.Text + ', ';
+  SQL := SQL + chr(39) + txtPIN.Text + '|' + txtWorkDate.Text + '|' + txtTimeIn.Text + '|' + txtTimeOut.Text + chr(39);
+  SQL := SQL + ')';
+  ADOConnection1.Execute(SQL);
+end;
+
+procedure TfrmLogTimeMaintenance.Add_Log;
+var
+  ID: String;
+  SQL: String;
+begin
+
+  gUser := ActiveUserName;
+
+  with ADODataSet3 do begin
+    Close;
+    CommandText := 'SELECT * ' +
+      'FROM dtaTime_Detail ' +
+      'WHERE Work_Date = ' + Chr(39) + Trim(txtWorkDate.Text) + Chr(39) +
+      ' AND Employee_PIN = ' + txtPIN.Text + ' ' +
+      'AND Actual_In = ' + Chr(39) + Trim(txtTimeIn.Text) + Chr(39) + ' ' +
+      'AND ISNULL(IsDeleted,0) = 0 ' +
+      'AND Actual_Out = ' + Chr(39) + Trim(txtTimeOut.Text) + Chr(39);
+    Open;
+    ID:='0';
+    if RecordCount > 0 then ID:=FieldByName('Time_ID').AsString;
+    Close;
+  end;
+  SQL :=       'INSERT INTO dtaLogFile ' ;
+  SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, New_Value, Employee_PIN, ID, Remarks ) ' ;
+  SQL := SQL + 'VALUES ';
+  SQL := SQL + '( ';
+  SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+  SQL := SQL + IntToStr(gUser_ID) + ', ';
+  SQL := SQL + chr(39) + 'DTR Correction' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'Add' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'dtaTime_Detail' + chr(39) + ', ';
+  SQL := SQL + chr(39) + 'Actual_In' + chr(39) + ', ';
+  SQL := SQL + chr(39) + txtTimeIn.Text + chr(39) + ', ';
+  SQL := SQL + txtPIN.Text + ', ';
+  SQL := SQL + ID + ', ';
+  SQL := SQL + chr(39) + txtPIN.Text + '|' + txtWorkDate.Text + '|' + txtTimeIn.Text + '|' + txtTimeOut.Text + '|' + gUser + chr(39);
+  SQL := SQL + ')';
+  ADOConnection1.Execute(SQL);
+end;
+
+procedure TfrmLogTimeMaintenance.Edit_Log;
+var
+  SQL: String;
+begin
+
+  gUser := ActiveUserName;
+
+  with ADODataSet1 do begin
+
+  //showmessage(commandtext);
+
+//            FieldByName('Task_ID').AsString := txtTaskID.Text;
+
+    if( varEditTime1 <> txtTimeIn.Text ) then
+    begin
+      SQL :=       'INSERT INTO dtaLogFile ' ;
+      SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value, ID, Employee_PIN, Remarks ) ' ;
+      SQL := SQL + 'VALUES ';
+      SQL := SQL + '( ';
+      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+      SQL := SQL + IntToStr(gUser_ID) + ', ';
+      SQL := SQL + chr(39) + 'DTR Correction' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'dtaTime_Detail' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Actual_In' + chr(39) + ', ';
+      SQL := SQL + chr(39) + varEditTime1 + chr(39) + ', ';
+      SQL := SQL + chr(39) + txtTimeIn.Text + chr(39) + ', ';
+      SQL := SQL + vTime_ID + ', ';
+      SQL := SQL + txtPIN.Text + ', ';
+      SQL := SQL + chr(39) + gUser + chr(39);
+      SQL := SQL + ')';
+      ADOConnection1.Execute(SQL);
+    end;
+
+    if( varEditTime2 <> txtTimeOut.Text ) then
+    begin
+      SQL :=       'INSERT INTO dtaLogFile ' ;
+      SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value, ID, Employee_PIN, Remarks ) ' ;
+      SQL := SQL + 'VALUES ';
+      SQL := SQL + '( ';
+      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+      SQL := SQL + IntToStr(gUser_ID) + ', ';
+      SQL := SQL + chr(39) + 'DTR Correction' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'dtaTime_Detail' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Actual_Out' + chr(39) + ', ';
+      SQL := SQL + chr(39) + varEditTime2 + chr(39) + ', ';
+      SQL := SQL + chr(39) + txtTimeOut.Text + chr(39) + ', ';
+      SQL := SQL + vTime_ID + ', ';
+      SQL := SQL + txtPIN.Text + ', ';
+      SQL := SQL + chr(39) + gUser + chr(39);
+      SQL := SQL + ')';
+      ADOConnection1.Execute(SQL);
+    end;
+  end;
+end;
+
+procedure TfrmLogTimeMaintenance.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  Action := caFree;
+end;
+
+
+procedure TfrmLogTimeMaintenance.FormActivate(Sender: TObject);
+begin
+  gUser := ActiveUserName;  // this is only temporary and must be modified
+  gUser_ID := StrToInt(ActiveUserID);    // this is only temporary
+
+  sTranDate := DateToStr(Now) + ' ' + TimeToStr(Now);
+  sUserID := IntToStr(gUser_ID);
+
+  With ADODataSet2 do
+  begin
+    Close;
+    CommandText := 'SELECT * FROM vwUsers WHERE UserName=' + chr(39) + gUser + chr(39);
+    Open;
+    if RecordCount = 1 then begin
+      txtUser.Text := gUser;
+      txtUser_EmployeeName.Text := FieldByName('Employee_Name').AsString;
+      txtJobPosition.Text := FieldByName('Job_Position_Code').AsString;
+      end
+    else begin
+      ShowMessage('Multiple user found for this username [' + gUser + ']');
+      //Halt(0);
+      end;
+    Close;
+  end;
+
+  //populate task id combo box with its corresponding
+  cmbTaskID.Enabled := FALSE;
+  With ADODataSet2 do
+  begin
+    CommandText := 'SELECT * FROM dtaSupervisor_Task WHERE Employee_PIN = '+IntToStr(gUser_ID);
+    Open;
+    if RecordCount > 0 then
+    begin
+      First;
+      While Not eof do
+      begin
+        cmbTaskID.AddItem(FieldByName('Task_ID').AsString, cmbTaskID);
+        Next;
+      end;
+      cmbTaskID.Enabled := TRUE;
+//      cmbTaskID.ItemIndex := 0;
+      cmbTaskID.Refresh;
+//      ADODataSet1.Close;
+//      ADODataSet1.CommandText := 'SELECT Employee_PIN, Employee_Name, Keyer_ID, Task_ID FROM vwKeyerRemarks WHERE Task_ID = ' + Chr(39) + cmbTaskID.Text + Chr(39) + ' ORDER BY Employee_Name';
+//      ADODataSet1.Open;
+//      DataSource1.DataSet := ADODataSet1;
+
+      //GridTime.DataSource := DataSource1;
+      //GridTime.Refresh;
+    end;
+    Close;
+  end;
+
+  InsertToLogFile(sTranDate, sUserID, 'DTR Correction', 'Load', 'dtaTime_detail', '');
+
+end;
+
+procedure TfrmLogTimeMaintenance.GridTimeKeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+var
+  i : Integer;
+  varOT : String;
+  tPIN : String;
+begin
+
+        vTIME_ID := ADODataSet1.FieldByName('TIME_ID').AsString;
+
+        if optWorkingDate.Checked = TRUE then
+        begin
+          txtWorkDate.Text := DateToStr(dtDate.Date);
+          txtPIN.Text := ADODataSet1.FieldByName('Employee_PIN').AsString;
+        end
+        else if optEmpPIN.Checked = TRUE then
+        begin
+          txtWorkDate.Text := ADODataSet1.FieldByName('Work_Date').AsString;
+          txtPIN.Text := varPIN;
+        end;
+
+        txtTimeIn.Text := ADODataSet1.FieldByName('Actual_In').AsString;
+        txtTimeOut.Text := ADODataSet1.FieldByName('Actual_Out').AsString;
+        txtTimeInterval.Text := ADODataSet1.FieldByName('Regular_Hours').AsString;
+
+        //check dtaTime_Summary
+        tPIN := txtPIN.Text;
+
+        ADODataSet2.Close;
+        ADODataSet2.CommandText := 'SELECT Actual_In, Actual_Out, OT, AuthorizeOT ' +
+          'FROM dtaTime_Summary ' +
+          'WHERE Work_Date = ' +
+          chr(39) + txtWorkDate.Text + chr(39) + ' AND Branch_Code = ' + Chr(39) + cmbBranch.Text + Chr(39) + ' AND Task_ID = ' + Chr(39) + cmbTaskID.Text + Chr(39) + ' AND Employee_PIN = ''' + tPIN + '''';
+        ADODataSet2.Active := TRUE;
+
+        if ADODataSet2.RecordCount > 0 then
+        begin
+          varOT := Trim(ADODataSet2.FieldByName('AuthorizeOT').AsString);
+
+          if varOT = 'Yes' then
+            lblAuthorized.Caption := 'Authorized'
+          else
+            lblAuthorized.Caption := '';
+
+          txtOT.Text := ADODataSet2.FieldByName('OT').AsString;
+          txtTimeInSummary.Text := ADODataSet2.FieldByName('Actual_In').AsString;
+          txtTimeOutSummary.Text := ADODataSet2.FieldByName('Actual_Out').AsString;
+
+        end
+        else
+        begin
+          txtOT.Text := '';
+          txtTimeInSummary.Text := '';
+          txtTimeOutSummary.Text := '';
+
+          lblAuthorized.Caption := '';
+        end;
+
+    btnAdd.Enabled := TRUE;
+    btnEdit.Enabled := TRUE;
+    Button1.Enabled := TRUE;
+
+
+    //check workdate for editing
+    ADODataSet2.Close;
+    ADODataSet2.CommandText := 'SELECT * FROM dtaTimeSecurity';
+    ADODataSet2.Active := TRUE;
+
+    if ADODataSet2.RecordCount > 0 then
+    begin
+      //if ADODataSet2.FieldByName('tStatus').Value = TRUE then
+      if StrToDate(txtWorkDate.Text) > ADODataSet2.FieldByName('tTo').Value then
+      begin
+        {ShowMessage('Editing of time detail for this payroll period is currently locked!');
+
+        btnAdd.Enabled := FALSE;
+        btnEdit.Enabled := FALSE;
+        Button1.Enabled := FALSE;}
+      end
+      else
+      begin
+        if (StrToDate(txtWorkDate.Text) < ADODataSet2.FieldByName('tFrom').Value) or (ADODataSet2.FieldByName('tStatus').Value = TRUE) then
+        begin
+          ShowMessage('Editing of previous time details is strictly prohibited after payroll process!');
+
+          btnAdd.Enabled := FALSE;
+          btnEdit.Enabled := FALSE;
+          Button1.Enabled := FALSE;
+        end;
+      end;
+    end;
+
+    ADODataSet2.Close;
+
+    ADODataSet2.CommandText := 'SELECT * FROM vwUsers WHERE username = ''' + gUser + '''';
+    ADODataSet2.Open;
+
+    if ADODataSet2.RecordCount > 0 then
+    begin
+      if ((ADODataSet2.FieldByName('Job_position_code').AsString <> 'ADMIN ASST') AND (ADODataSet2.FieldByName('Job_position_code').AsString <> 'F.ANALYST')) then
+      begin
+        btnAdd.Enabled := FALSE;
+        btnEdit.Enabled := FALSE;
+        Button1.Enabled := FALSE;
+      end;
+    end;
+
+    ADODataSet2.Close;
+
+end;
+
+procedure TfrmLogTimeMaintenance.btnExcessOTClick(Sender: TObject);
+var
+
+  oXL, oWB, oSheet : variant;
+
+  sqlStr : string;
+
+  varLimit : string;
+  row : integer;
+begin
+
+  oXL := CreateOleObject('Excel.Application');
+  oWB := oxl.workbooks.add();
+
+  oWB.Worksheets.Add();
+  oWB.Worksheets.Add();
+
+  oSheet := owb.Sheets[1];
+  oSheet.Name := 'Excess overtime';
+
+
+  if (StrToFloat(txtLimit.Text) > 0) then
+  begin
+
+    varLimit := trim(txtLimit.Text);
+
+    row := 1;
+
+    oSheet.Cells[row, 1] := 'EMPLOYEES WITH EXCESS OVERTIME';
+
+    row := row + 1;
+    oSheet.Cells[row, 1] := 'Period: ' + d1 + ' - ' + d2;
+
+    row := row + 2;
+    oSheet.Cells[row, 1] := 'project';
+    oSheet.Cells[row, 2] := 'pin';
+    oSheet.Cells[row, 3] := 'job position';
+    oSheet.Cells[row, 4] := 'work date';
+    oSheet.Cells[row, 5] := 'actual in';
+    oSheet.Cells[row, 6] := 'actual out';
+    oSheet.Cells[row, 7] := 'overtime';
+
+    oSheet.Range['A1'].ColumnWidth := 18;
+    oSheet.Range['B2'].ColumnWidth := 8;
+    oSheet.Range['C3'].ColumnWidth := 12;
+    oSheet.Range['D4'].ColumnWidth := 14;
+    oSheet.Range['E5'].ColumnWidth := 20;
+    oSheet.Range['F6'].ColumnWidth := 20;
+    oSheet.Range['G7'].ColumnWidth := 8;
+
+
+    oSheet.Range['A1:G4'].Font.Bold := true;
+    //oSheet.Range['A1:G4'].HorizontalAlignment := HorizontalAlignment.Center;
+
+    row := row + 1;
+    oSheet.Range['A' + IntToStr(row) + ':A' + IntToStr(row)].RowHeight := 3;
+
+
+
+
+    row := row + 1;
+
+
+    sqlStr := 'SELECT b.employee_pin, b.primary_task_id, b.emp_loc, b.job_position_code, a.* ' +
+      'FROM dtaTime_Summary a LEFT OUTER JOIN dtaEmployees b ON a.employee_pin = b.employee_pin ' +
+      'WHERE b.emp_status = ''active'' AND (b.job_position_code = ''keyer'' OR b.job_position_code = ''qa'') ' +
+      'AND a.work_date BETWEEN ' + d1 + ' AND ' + d2 + ' AND a.ot > ' + varLimit +
+      ' ORDER BY b.primary_task_id, a.employee_pin, a.work_date';
+
+    dsOvertime.Connection := ADOConnection1;
+    dsOvertime.CommandText := sqlStr;
+    dsOvertime.Open;
+
+    if (dsOvertime.RecordCount > 0) then
+    begin
+
+      dsOvertime.First;
+
+      repeat
+
+        with dsOvertime do
+        begin
+
+          oSheet.Cells[row, 1] := FieldByName('primary_task_id').AsString;
+          oSheet.Cells[row, 2] := FieldByName('employee_pin').AsString;
+          oSheet.Cells[row, 3] := FieldByName('job_position_code').AsString;
+          oSheet.Cells[row, 4] := FieldByName('work_date').AsString;
+          oSheet.Cells[row, 5] := Chr(39) + FieldByName('actual_in').AsString;
+          oSheet.Cells[row, 6] := Chr(39) + FieldByName('actual_out').AsString;
+
+          oSheet.Cells[row, 7] := FieldByName('ot').AsString;
+          oSheet.Range['G' + IntToStr(row)].Font.Color := clRED;
+
+        //end with
+        end;
+
+        dsOvertime.Next;
+        row := row + 1;
+
+      //end do while
+      until dsOvertime.Eof
+
+    //end if
+    end;
+
+    oSheet.Cells[row, 1] := '***nothing follows***';
+
+    row := row + 2;
+    oSheet.Cells[row, 1] := IntToStr(dsOvertime.RecordCount) + ' record(s)';
+    oSheet.Range['A' + IntToStr(row)].Font.Bold := true;
+
+    dsOvertime.Close;
+
+    oXL.Visible := true;
+
+  end;
+end;
+
+procedure TfrmLogTimeMaintenance.InsertToLogFile(vDate, vUser, vModule, vCommand, vTable, vPIN: String);
+begin
+
+  dsLogFile.Close;
+  dsLogFile.CommandText := 'SELECT * FROM dtaLogFile';
+  dsLogFile.Active := TRUE;
+
+  with dsLogFile do
+  begin
+    Insert;
+      FieldByName('Tran_Date').AsString := vDate;
+      FieldByName('User_Id').AsString := vUser;
+      FieldByName('Module_Desc').AsString := vModule;
+      FieldByName('Command').AsString := vCommand;
+      FieldByName('Table_Name').AsString := vTable;
+      FieldByName('Employee_PIN').AsString := vPIN;
+      FieldByName('Remarks').AsString := 'Module log';
+    Post;
+  end;
+end;
+
+procedure TfrmLogTimeMaintenance.btnFinalizeEditingClick(Sender: TObject);
+begin
+  // This is to ...
+  //update dtaTime_Summary table
+  if (cmbMonth.Text <> '') AND (cmbBranch.Text <> '') then
+  begin
+    days1 := 0;
+    days2 := 0;
+
+    d1 := IntToStr(cmbMonth.ItemIndex + 1) + ' ' + cmbYear.Text;
+
+    if opt115.Checked = TRUE then
+    begin
+      days1 := 1;
+      days2 := 15;
+    end
+    else if opt1631.Checked = TRUE then
+    begin
+      d2 := IntToStr(DaysInAMonth(StrToInt(cmbYear.Text),cmbMonth.ItemIndex + 1));
+
+      days1 := 16;
+      days2 := StrToInt(d2);
+    end;
+
+    d1 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days1) + '/' + cmbYear.Text + ' 12:00:00 AM';
+
+    d2 :=  IntToStr(cmbMonth.ItemIndex + 1) + '/' + IntToStr(days2) + '/' + cmbYear.Text + ' 11:59:59 AM';
+
+    d2 := DateTimeToStr(IncDay(StrToDateTime(d2)));
+
+    //UpdateSummary(d1, d2);
+
+    UpdateSummaryByEmployee(d1, d2, txtEmpPIN.Text);
+
+    ShowMessage('Completed!');
+  end;
+end;
+end.

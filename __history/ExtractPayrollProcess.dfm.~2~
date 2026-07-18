@@ -1,0 +1,175 @@
+object frmExtractPayrollProcess: TfrmExtractPayrollProcess
+  Left = 0
+  Top = 0
+  BorderStyle = bsToolWindow
+  Caption = 'Payroll Process Extraction'
+  ClientHeight = 222
+  ClientWidth = 633
+  Color = clSkyBlue
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -14
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  FormStyle = fsMDIChild
+  OldCreateOrder = False
+  Position = poScreenCenter
+  Visible = True
+  OnActivate = FormActivate
+  OnClose = FormClose
+  OnCreate = FormCreate
+  PixelsPerInch = 120
+  TextHeight = 17
+  object GroupBox1: TGroupBox
+    Left = 21
+    Top = 12
+    Width = 588
+    Height = 197
+    Caption = 'PAYROLL PERIOD'
+    Color = clCream
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -15
+    Font.Name = 'Arial'
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+    TabOrder = 0
+    object Label2: TLabel
+      Left = 259
+      Top = 41
+      Width = 129
+      Height = 17
+      Alignment = taCenter
+      Caption = 'Payroll Period From'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -15
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label3: TLabel
+      Left = 277
+      Top = 75
+      Width = 109
+      Height = 17
+      Alignment = taCenter
+      Caption = 'Payroll Period To'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -15
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label4: TLabel
+      Left = 25
+      Top = 39
+      Width = 90
+      Height = 17
+      Alignment = taCenter
+      Caption = 'Process Date'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -15
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Button1: TButton
+      Left = 20
+      Top = 111
+      Width = 542
+      Height = 33
+      Caption = 'EXTRACT PAYROLL DATA'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clBlue
+      Font.Height = -17
+      Font.Name = 'Bookman Old Style'
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 0
+      OnClick = Button1Click
+    end
+    object Edit2: TEdit
+      Left = 20
+      Top = 152
+      Width = 542
+      Height = 26
+      BevelInner = bvSpace
+      BevelOuter = bvNone
+      Color = clCaptionText
+      TabOrder = 1
+    end
+    object dpFromDate: TDateTimePicker
+      Left = 417
+      Top = 33
+      Width = 141
+      Height = 25
+      Date = 38764.696866064810000000
+      Time = 38764.696866064810000000
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -15
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 2
+      OnChange = dtDate1Change
+    end
+    object dpDateTo: TDateTimePicker
+      Left = 417
+      Top = 67
+      Width = 141
+      Height = 25
+      Date = 38764.700790034730000000
+      Time = 38764.700790034730000000
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -15
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 3
+    end
+    object dpProcDate: TDateTimePicker
+      Left = 24
+      Top = 64
+      Width = 156
+      Height = 25
+      Date = 38764.000000000000000000
+      Time = 38764.000000000000000000
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -15
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+      TabOrder = 4
+      OnChange = dtDate1Change
+    end
+  end
+  object ADOConn: TADOConnection
+    LoginPrompt = False
+    Left = 32
+    Top = 221
+  end
+  object ADODataSet1: TADODataSet
+    Connection = ADOConn
+    Parameters = <>
+    Left = 66
+    Top = 220
+  end
+  object ADOQuery1: TADOQuery
+    Connection = ADOConn
+    Parameters = <>
+    Left = 92
+    Top = 227
+  end
+  object ADOConnection1: TADOConnection
+    LoginPrompt = False
+    Provider = 'SQLOLEDB.1'
+    Top = 16
+  end
+end

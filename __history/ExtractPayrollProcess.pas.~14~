@@ -1,0 +1,322 @@
+// Name:  ExtractPayrollProcess.pas
+// Description:  This window is basically made for easy transmission
+//     of employees' salary to a specified bank.  Details of employees
+//     (account number and current salary) is included in the output file
+//     which will then be forwarded to the bank.
+
+unit ExtractPayrollProcess;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ComCtrls, StdCtrls, DateUtils,ADODB, DB, CommonModule;
+
+type
+  TfrmExtractPayrollProcess = class(TForm)
+    GroupBox1: TGroupBox;
+    Button1: TButton;
+    Edit2: TEdit;
+    Label2: TLabel;
+    Label3: TLabel;
+    dpFromDate: TDateTimePicker;
+    dpDateTo: TDateTimePicker;
+    ADOConn: TADOConnection;
+    ADODataSet1: TADODataSet;
+    ADOQuery1: TADOQuery;
+    Label4: TLabel;
+    dpProcDate: TDateTimePicker;
+    ADOConnection1: TADOConnection;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormActivate(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure dtDate1Change(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    function totalcount( temp_st: string ): string;
+    function totalnet( temp_pay: string ): string;
+    function hastamount( temp_st: string ): string;
+
+    procedure UpdateDateTo();
+    
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmExtractPayrollProcess: TfrmExtractPayrollProcess;
+  filename :TextFile;
+  reccount : Integer;
+  tNet_Pay : Integer;
+  temp_Pay : String;
+  temp_st : STring;
+  Footer :String;
+  vdate : String;
+  lstdig : integer;
+  gUser : String;
+  gUser_ID : Integer;
+  SQL : string;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfrmExtractPayrollProcess.FormCreate(Sender: TObject);
+begin
+dpDateTo.Enabled := false;
+
+    ADOConn.ConnectionString := CommonModule.ReadInitConn(CommonModule.ToConnect('Null'));
+    ADOConn.Connected := TRUE;
+end;
+
+procedure TfrmExtractPayrollProcess.dtDate1Change(Sender: TObject);
+begin
+
+  UpdateDateTo();
+
+end;
+
+procedure TfrmExtractPayrollProcess.UpdateDateTo();
+var
+  dt: TDateTime;
+  myYear, myMonth, myDay : Word;
+begin
+
+    //dbgrid1.Visible := true;
+    DecodeDate(dpFromDate.Date, myYear, myMonth, myDay);
+    
+  if(DayOfTheMonth(dpFromDate.Date))=1 then
+    dt := EncodeDate( myYear, myMonth, 15)
+  else
+    begin
+      dt := EndOfAMonth( myYear, myMonth );
+      DecodeDate( dt, myYear, myMonth, myDay );
+      dt := EncodeDate( myYear, myMonth, myDay );
+    end;
+
+  dpDateTo.Date := dt;
+  dpDateTo.Refresh;
+end;
+
+procedure TfrmExtractPayrollProcess.Button3Click(Sender: TObject);
+begin
+  frmExtractPayrollProcess.Close;
+end;
+
+procedure TfrmExtractPayrollProcess.Button1Click(Sender: TObject);
+var
+vSQL : String;
+Header : String;
+comp_code:string;
+tDate :String;
+sfile :string;
+wATM : String;
+temp_accntNo : String;
+//Accnt_No :String;
+tempnet_pay : String;
+vNet_Pay : String;
+fdate: String;
+temp : string;
+
+AccntCardNo : String;
+
+begin
+
+  // CHECK FOR NEGATIVE NET PAY //
+  Adodataset1.Close;
+  ADODATASET1.Connection := ADOCONN;
+  ADODATASET1.CommandText := 'Select employee_pin,net_pay from dtaPayrollProcess where period1 = ' + Chr(39) +  DateToStr(dpFromDate.Date) + Chr(39) + ' ORDER BY employee_pin';
+  ADODATASET1.Open;
+  {if ADODataset1.RecordCount > 0 then
+  begin
+    ShowMessage('Can not proceed due to the following employee pin with negative Net Pay.');
+    while not ADODataset1.EOF do
+    begin
+      ShowMessage( ADODataSet1.FieldByName('Employee_Pin').AsString );
+      ADODataset1.Next;
+    end;
+    Adodataset1.Close;
+    Exit;
+  end;
+   }
+
+   edit2.Text := 'Starting...';
+   edit2.Refresh;
+
+   edit2.Text := 'Initializing Payroll Extraction...';
+   edit2.Refresh;
+
+  Adodataset1.Close;
+  ADODATASET1.Connection := ADOCONN;
+  ADODATASET1.CommandText := 'Select * from vwPayrollExtraction where period1 = ' + Chr(39) +  DateToStr(dpFromDate.Date) + Chr(39) + 'ORDER BY wATM';
+  ADODATASET1.Open;
+  reccount :=0;
+ // ADODataSet1.Active := True;
+   if ADODataset1.RecordCount = 0 then
+      Begin
+        showmessage('No Record Found');
+      end
+   else
+      Begin
+        tNet_Pay := 0;
+        while not AdoDataset1.Eof  do
+        Begin
+          reccount := reccount + 1;
+          vNet_Pay := ADODataset1.FieldByName('net_pay').AsString;
+          //SHOWMESSAGE(vNet_Pay);
+          tNet_Pay := tNet_Pay + StrToInt(vNet_Pay);
+          AdoDataSet1.Next;
+        End;
+        AdoDataSet1.First;
+
+        tDate := FormatDateTime('yyyy/mm/dd', dpProcDate.Date);
+        vDate := StringReplace(tDate, '/','',[rfReplaceAll, rfIgnoreCase]);
+        //showmessage(Vdate);
+        fdate := Copy(Vdate, 5,4);
+        //showmessage(fdate);
+        temp_Pay := totalnet(IntToStr(tNet_Pay));
+        temp_st := totalcount(IntToStr(reccount));
+        Header := '0' + vDate+ '0535EXACTSTAR PHILIPPINES    201016000511';
+
+        temp := GetCurrentDir;
+        AssignFile(filename, temp + '\TextFiles\PYCTB' +fdate+'.TXT');
+        //AssignFile(filename, 'C:\Payroll_report\PYCTB'+fdate+'.TXT');
+        Rewrite(filename);
+        writeln(filename, Header);
+        lstdig := 0;
+        while not AdoDataset1.Eof  do
+          Begin
+            AccntCardNo := ADODataset1.FieldByName('ATMNumber').AsString;
+            lstdig :=  lstdig + StrToInt(copy(AccntCardNo, 16,1));
+
+            //accnt_no := ADODataset1.FieldByName('ATM_Number').AsString;
+            //lstdig :=  lstdig + StrToInt(copy(accnt_no, 12,1));
+
+            vNet_Pay := ADODataset1.FieldByName('net_pay').AsString;
+            //SHOWMESSAGE(VNET_PAY);
+            wATM := ADODataset1.FieldByName('wATM').AsString;
+            writeln(filename, '1' + vDate + '0535' + '00000'+ AccntCardNo + vNet_Pay +'    '+'000');
+
+            //writeln(filename, '1' + vDate + '0535' + '00000'+ accnt_no + vNet_Pay +'    '+'000');
+
+            AdoDataSet1.Next;
+          end;
+        Footer := '2' + vDate+ '0535' + temp_st + hastamount(IntToStr(lstdig)) + temp_pay + '*********';
+        writeln(filename, Footer);
+        CloseFile(filename);
+        edit2.Text := 'Extraction Complete';
+        edit2.Refresh;
+        ADODataSet1.Close;
+
+    // log //
+    SQL :=       'INSERT INTO dtaLogFile ' ;
+    SQL := SQL + '   ( Tran_Date, User_id, Module_Desc, Command, Remarks ) ' ;
+    SQL := SQL + 'VALUES ';
+    SQL := SQL + '( ';
+    SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+    SQL := SQL + IntToStr(gUser_ID) + ', ';
+    SQL := SQL + chr(39) + frmExtractPayrollProcess.Caption + chr(39) + ', ';
+    SQL := SQL + chr(39) + 'Report' + chr(39) + ', ';
+    SQL := SQL + chr(39) + DateToStr(dpProcDate.Date) + '|' + DateToStr(dpFromDate.Date) + '|' + DateToStr(dpDateTo.Date) + chr(39) ;
+    SQL := SQL + ')';
+    ADOConn.Execute(SQL);
+
+        showmessage('Payroll Data Extracted');
+
+      end;
+
+end;
+
+
+
+function TfrmExtractPayrollProcess.totalcount( temp_st: string ): string;
+var
+  st : string;
+  i : integer;
+  j : integer;
+begin
+  temp_st := '000000' + temp_st;
+  i := length(temp_st);
+  j := 0;
+  st := '';
+  repeat
+    j := j + 1;
+
+    if( j>0 ) then
+    begin
+      //if copy(temp_st,i,1)<>'.' then
+        st := copy(temp_st,i,1) + st;
+        i := i - 1;
+    end;
+  until length(st)=6;
+//  showmessage(st);
+  totalcount := st;
+end;
+
+function TfrmExtractPayrollProcess.hastamount( temp_st: string ): string;
+var
+  st : string;
+  i : integer;
+  j : integer;
+begin
+  temp_st := '0000000' + temp_st;
+  i := length(temp_st);
+  j := 0;
+  st := '';
+  repeat
+    j := j + 1;
+
+    if( j>0 ) then
+    begin
+      //if copy(temp_st,i,1)<>'.' then
+        st := copy(temp_st,i,1) + st;
+        i := i - 1;
+    end;
+  until length(st)=7;
+//  showmessage(st);
+  hastamount := st;
+end;
+
+function TfrmExtractPayrollProcess.totalnet( temp_pay: string ): string;
+var
+  st : string;
+  i : integer;
+  j : integer;
+begin
+  temp_pay := '000000000000000' + temp_Pay;
+  i := length(temp_pay);
+  j := 0;
+  st := '';
+  repeat
+    j := j + 1;
+    if( j > 0 ) then
+    begin
+      //if copy(temp_pay,i,1)<>'.' then
+        st := copy(temp_pay,i,1) + st;
+        i := i - 1;
+    end;
+  until length(st)=15;
+  //showmessage(st);
+  totalnet := st;
+end;
+procedure TfrmExtractPayrollProcess.FormActivate(Sender: TObject);
+begin
+  gUser := ActiveUserName;  // this is only temporary and must be modified
+  gUser_ID := StrToInt(ActiveUserID);    // this is only temporary
+
+  dpProcDate.Date := Now();
+  dpFromDate.Date := Now();
+
+  UpdateDateTo();
+end;
+
+procedure TfrmExtractPayrollProcess.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  Action := caFree;
+end;
+
+end.
+
