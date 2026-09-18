@@ -134,7 +134,7 @@ begin
 
     ADODATASET1.Close;
     ADODATASET1.Connection := ADOCONNECTION1;
-    ADODATASET1.CommandText := 'Select distinct period1 from dtaPayrollProcess where Period1='+sPeriod1;
+    ADODATASET1.CommandText := 'Select distinct period1 from dtaPayrollProcess where Period1='+sPeriod2;
     ADODATASET1.Open;
     I := ADODataSet1.RecordCount;
     ADODataSet1.Close;

@@ -148,13 +148,13 @@ implementation
 
 procedure TfrmEmployeeFileMaintenance.cmdAddClick(Sender: TObject);
 begin
-    if (txtEmployeePIN.Text <> '') then
+    if (txtEmployeePIN.Text <> '') AND (txtEmployeeName.Text <> '') then
     begin
-        {if (StrToFloat(txtMonthlyRate.Text)>0) then
+        if (StrToFloat(txtMonthlyRate.Text)>0) and (StrToFloat(txtRate_Hour.Text)>0) then
         begin
           ShowMessage('Either Monthly Rate or Rate Hour must be zero (0).');
           Exit;
-        end;}
+        end;
         varWATM := '';
         varATMNum := '';
         with ADODataSet do
@@ -191,10 +191,10 @@ begin
               FieldByName('Project').AsString := cmbPrimary_Task_ID.Text;
 
               FieldByName('ATM_Number').AsString := txtATMNumber.Text;
-              //FieldByName('ATMCardNumber').AsString := txtATMCardNumber.Text;
+              FieldByName('ATMCardNumber').AsString := txtATMCardNumber.Text;
 
               FieldByName('Monthly_Rate').asFloat := StrToFloat(txtMonthlyRate.Text);
-              //FieldByName('Rate_Hour').asFloat := StrToFloat(txtRate_Hour.Text);
+              FieldByName('Rate_Hour').asFloat := StrToFloat(txtRate_Hour.Text);
               FieldByName('Date_Hired').AsDateTime := dtpDate_Hired.DateTime;
 
               if chkIncludeInProcess.Checked then FieldByName('ProcessIncluded').AsVariant := 1
@@ -275,7 +275,7 @@ begin
               cmbEmp_Status.Text := FieldByName('Emp_Status').AsString;
 
             txtATMNumber.Text := FieldByName('ATM_Number').AsString;
-            //txtATMCardNumber.Text := FieldByName('ATMCardNumber').AsString;
+            txtATMCardNumber.Text := FieldByName('ATMCardNumber').AsString;
 
             //get job position
             varPos := FieldByName('Job_Position_Code').AsString;
@@ -292,7 +292,7 @@ begin
             txtEmail.Text := FieldByName('EmailAdd1').AsString;
 
             txtMonthlyRate.Text := FieldByName('Monthly_Rate').asString;
-            //txtRate_Hour.Text := FieldByName('Rate_Hour').asString;
+            txtRate_Hour.Text := FieldByName('Rate_Hour').asString;
 
             dtpDate_Hired.DateTime := FieldByName('Date_Hired').AsDateTime;
 
@@ -362,10 +362,10 @@ begin
             FieldByName('EmailAdd1').AsString := txtEmail.Text;
 
             FieldByName('ATM_Number').AsString := txtATMNumber.Text;
-            //FieldByName('ATMCardNumber').AsString := txtATMCardNumber.Text;
+            FieldByName('ATMCardNumber').AsString := txtATMCardNumber.Text;
 
             FieldByName('Monthly_Rate').asFloat := StrToFloat(txtMonthlyRate.Text);
-            //FieldByName('Rate_Hour').asFloat := StrToFloat(txtRate_Hour.Text);
+            FieldByName('Rate_Hour').asFloat := StrToFloat(txtRate_Hour.Text);
 
             FieldByName('Date_Hired').AsDateTime := dtpDate_Hired.DateTime;
             if chkIncludeInProcess.Checked then FieldByName('ProcessIncluded').AsVariant := 1
@@ -374,18 +374,9 @@ begin
             if txtMP2EmpShare.Text <> '' then
               FieldByName('MP2Share').asFloat := StrToFloat(txtMP2EmpShare.Text);
 
-            if txtMP2EmployerShare.Text <> '' then
-              FieldByName('MP2Share_ER').asFloat := StrToFloat(txtMP2EmployerShare.Text);
-
-            FieldByName('GHCardNumber').AsString := txtGHCardNumber.Text;
-            FieldByName('NameOnAccount').AsString := txtNameOnAccount.Text;
-            FieldByName('BankName').AsString := txtBankName.Text;
-            FieldByName('BankBranch').AsString := txtBankBranch.Text;
-
           Post;
 
           ShowMessage('Record was successfully updated!');
-          
           Close;
         end;
        end;
@@ -436,7 +427,7 @@ begin
           cmbEmp_Status.Text := FieldByName('Emp_Status').AsString;
 
         txtATMNumber.Text := FieldByName('ATM_Number').AsString;
-        //txtATMCardNumber.Text := FieldByName('ATMCardNumber').AsString;
+        txtATMCardNumber.Text := FieldByName('ATMCardNumber').AsString;
 
         //get job position
         varPos := FieldByName('Job_Position_Code').AsString;
@@ -451,7 +442,7 @@ begin
           cmbPrimary_Task_ID.Text := FieldByName('Primary_Task_ID').AsString;
 
           txtMonthlyRate.Text := FieldByName('Monthly_Rate').asString;
-          //txtRate_Hour.Text := FieldByName('Rate_Hour').asString;
+          txtRate_Hour.Text := FieldByName('Rate_Hour').asString;
 
         if MessageDlg('Delete Employee?', mtConfirmation, mbYesNo, 0) = mrYes then
         with ADOConnection do
@@ -494,14 +485,14 @@ end;
 procedure TfrmEmployeeFileMaintenance.optYesClick(Sender: TObject);
 begin
   txtATMNumber.Enabled := TRUE;
-  //txtATMCardNumber.Enabled := TRUE;
+  txtATMCardNumber.Enabled := TRUE;
   txtATMNumber.SetFocus;
 end;
 
 procedure TfrmEmployeeFileMaintenance.optNoneClick(Sender: TObject);
 begin
   txtATMNumber.Enabled := FALSE;
-  //txtATMCardNumber.Enabled := FALSE;
+  txtATMCardNumber.Enabled := FALSE;
 end;
 
 procedure TfrmEmployeeFileMaintenance.FormActivate(Sender: TObject);
@@ -541,7 +532,7 @@ procedure TfrmEmployeeFileMaintenance.LoadEmp_Status();
 begin
 //Load tax codes
   dsCombo.Close;
-  dsCombo.CommandText := 'SELECT DISTINCT Code FROM dtaCodeTables WHERE Code_Category=''Emp_Status'' ORDER BY Code';
+  dsCombo.CommandText := 'SELECT DISTINCT Code FROM dtaCodeTables WHERE Code_Category=''Emp_STatus'' ORDER BY Code';
   dsCombo.Active := TRUE;
 
   if dsCombo.RecordCount > 0 then
@@ -698,20 +689,14 @@ begin
   txtEmployeePIN.Clear;
   txtEmployeeName.Clear;
   txtMonthlyRate.Text := '0.00';
-  //txtRate_Hour.Text := '0.00';
+  txtRate_Hour.Text := '0.00';
   cmbJobPosition.Text := '';
   cmbPrimary_Task_ID.Text := '';
   txtATMNumber.Clear;
-  //txtATMCardNumber.Clear;
+  txtATMCardNumber.Clear;
   cmbEmp_Status.Text := '';
 
   txtMP2EmpShare.Text := '0.00';
-  txtMP2EmployerShare.Text := '0.00';
-
-  txtGHCardNumber.Clear;
-  txtNameOnAccount.Clear;
-  txtBankName.Clear;
-  txtBankBranch.Clear;
 end;
 
 procedure TfrmEmployeeFileMaintenance.Delete_Log;
@@ -820,6 +805,26 @@ begin
       SQL := SQL + chr(39) + 'Monthly_Rate' + chr(39) + ', ';
       SQL := SQL + chr(39) + FieldByName('Monthly_Rate').AsString + '.00' + chr(39) + ', ';
       SQL := SQL + txtMonthlyRate.Text;
+      SQL := SQL + ')';
+      ADOConnection.Execute(SQL);
+    end;
+
+    //rate hour
+    if( FieldByName('Rate_Hour').AsFloat <> StrToFloat(txtRate_Hour.Text) ) then
+    begin
+      SQL :=       'INSERT INTO dtaLogFile ' ;
+      SQL := SQL + '   ( Tran_Date, User_id, Employee_PIN, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value ) ' ;
+      SQL := SQL + 'VALUES ';
+      SQL := SQL + '( ';
+      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
+      SQL := SQL + IntToStr(gUser_ID) + ', ';
+      SQL := SQL + chr(39) + txtEmployeePIN.Text + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Employee File Maintenance' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'dtaEmployees' + chr(39) + ', ';
+      SQL := SQL + chr(39) + 'Rate_Hour' + chr(39) + ', ';
+      SQL := SQL + chr(39) + FieldByName('Rate_Hour').AsString + '.00' + chr(39) + ', ';
+      SQL := SQL + txtRate_Hour.Text;
       SQL := SQL + ')';
       ADOConnection.Execute(SQL);
     end;
@@ -938,127 +943,6 @@ begin
       SQL := SQL + ')';
       ADOConnection.Execute(SQL);
     end;
-
-    // tier 3 employee share
-    if( FieldByName('MP2Share').AsString <> txtMP2EmpShare.Text ) then
-    begin
-      SQL :=       'INSERT INTO dtaLogFile ' ;
-      SQL := SQL + '   ( Tran_Date, User_id, Employee_PIN, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value ) ' ;
-      SQL := SQL + 'VALUES ';
-      SQL := SQL + '( ';
-      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
-      SQL := SQL + IntToStr(gUser_ID) + ', ';
-      SQL := SQL + chr(39) + txtEmployeePIN.Text + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Employee File Maintenance' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'dtaEmployees' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'MP2Share' + chr(39) + ', ';
-      SQL := SQL + chr(39) + FieldByName('MP2Share').AsString + chr(39) + ', ';
-      SQL := SQL + chr(39) + txtMP2EmpShare.Text + chr(39);
-      SQL := SQL + ')';
-      ADOConnection.Execute(SQL);
-    end;
-
-    // tier 3 employer share
-    if( FieldByName('MP2Share_ER').AsString <> txtMP2EmployerShare.Text ) then
-    begin
-      SQL :=       'INSERT INTO dtaLogFile ' ;
-      SQL := SQL + '   ( Tran_Date, User_id, Employee_PIN, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value ) ' ;
-      SQL := SQL + 'VALUES ';
-      SQL := SQL + '( ';
-      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
-      SQL := SQL + IntToStr(gUser_ID) + ', ';
-      SQL := SQL + chr(39) + txtEmployeePIN.Text + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Employee File Maintenance' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'dtaEmployees' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'MP2Share_ER' + chr(39) + ', ';
-      SQL := SQL + chr(39) + FieldByName('MP2Share_ER').AsString + chr(39) + ', ';
-      SQL := SQL + chr(39) + txtMP2EmployerShare.Text + chr(39);
-      SQL := SQL + ')';
-      ADOConnection.Execute(SQL);
-    end;
-
-    // gh card number
-    if( FieldByName('GHCardNumber').AsString <> txtGHCardNumber.Text ) then
-    begin
-      SQL :=       'INSERT INTO dtaLogFile ' ;
-      SQL := SQL + '   ( Tran_Date, User_id, Employee_PIN, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value ) ' ;
-      SQL := SQL + 'VALUES ';
-      SQL := SQL + '( ';
-      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
-      SQL := SQL + IntToStr(gUser_ID) + ', ';
-      SQL := SQL + chr(39) + txtEmployeePIN.Text + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Employee File Maintenance' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'dtaEmployees' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'GHCardNumber' + chr(39) + ', ';
-      SQL := SQL + chr(39) + FieldByName('GHCardNumber').AsString + chr(39) + ', ';
-      SQL := SQL + chr(39) + txtGHCardNumber.Text + chr(39);
-      SQL := SQL + ')';
-      ADOConnection.Execute(SQL);
-    end;
-
-    // name on account
-    if( FieldByName('NameOnAccount').AsString <> txtNameOnAccount.Text ) then
-    begin
-      SQL :=       'INSERT INTO dtaLogFile ' ;
-      SQL := SQL + '   ( Tran_Date, User_id, Employee_PIN, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value ) ' ;
-      SQL := SQL + 'VALUES ';
-      SQL := SQL + '( ';
-      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
-      SQL := SQL + IntToStr(gUser_ID) + ', ';
-      SQL := SQL + chr(39) + txtEmployeePIN.Text + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Employee File Maintenance' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'dtaEmployees' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'NameOnAccount' + chr(39) + ', ';
-      SQL := SQL + chr(39) + FieldByName('NameOnAccount').AsString + chr(39) + ', ';
-      SQL := SQL + chr(39) + txtNameOnAccount.Text + chr(39);
-      SQL := SQL + ')';
-      ADOConnection.Execute(SQL);
-    end;
-
-    // bank name
-    if( FieldByName('BankName').AsString <> txtBankName.Text ) then
-    begin
-      SQL :=       'INSERT INTO dtaLogFile ' ;
-      SQL := SQL + '   ( Tran_Date, User_id, Employee_PIN, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value ) ' ;
-      SQL := SQL + 'VALUES ';
-      SQL := SQL + '( ';
-      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
-      SQL := SQL + IntToStr(gUser_ID) + ', ';
-      SQL := SQL + chr(39) + txtEmployeePIN.Text + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Employee File Maintenance' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'dtaEmployees' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'BankName' + chr(39) + ', ';
-      SQL := SQL + chr(39) + FieldByName('BankName').AsString + chr(39) + ', ';
-      SQL := SQL + chr(39) + txtBankName.Text + chr(39);
-      SQL := SQL + ')';
-      ADOConnection.Execute(SQL);
-    end;
-
-    // bank branch
-    if( FieldByName('BankBranch').AsString <> txtBankBranch.Text ) then
-    begin
-      SQL :=       'INSERT INTO dtaLogFile ' ;
-      SQL := SQL + '   ( Tran_Date, User_id, Employee_PIN, Module_Desc, Command, Table_Name, Field_Name, Prev_Value, New_Value ) ' ;
-      SQL := SQL + 'VALUES ';
-      SQL := SQL + '( ';
-      SQL := SQL + chr(39) + DateToStr(Now) + ' ' + TimeToStr(Now) + chr(39) + ', ';
-      SQL := SQL + IntToStr(gUser_ID) + ', ';
-      SQL := SQL + chr(39) + txtEmployeePIN.Text + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Employee File Maintenance' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'Edit' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'dtaEmployees' + chr(39) + ', ';
-      SQL := SQL + chr(39) + 'BankBranch' + chr(39) + ', ';
-      SQL := SQL + chr(39) + FieldByName('BankBranch').AsString + chr(39) + ', ';
-      SQL := SQL + chr(39) + txtBankBranch.Text + chr(39);
-      SQL := SQL + ')';
-      ADOConnection.Execute(SQL);
-    end;
-
 
   end;
 end;

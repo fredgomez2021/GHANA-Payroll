@@ -261,7 +261,7 @@ begin
   ADOConnection1.Execute(strSt);
 
   // check if the payroll period has been locked for processing //
-  ADODataSet1.CommandText := 'SELECT * FROM dtaLockPayPeriod WHERE Period1='+sPeriod1;
+  ADODataSet1.CommandText := 'SELECT * FROM dtaLockPayPeriod WHERE Period1='+sPeriod2;
   ADODataSet1.Open;
   ADODataSet1.First;
   I := ADODataSet1.RecordCount;
@@ -275,7 +275,7 @@ begin
   end;
 
   // if the payperiod is not empty //
-  ADODataSet1.CommandText := 'SELECT * FROM dtaPayrollProcess WHERE Period1='+sPeriod1;
+  ADODataSet1.CommandText := 'SELECT * FROM dtaPayrollProcess WHERE Period1='+sPeriod2;
   ADODataSet1.Open;
   ADODataSet1.First;
   I := ADODataSet1.RecordCount;
@@ -292,7 +292,7 @@ begin
 
   if (chkContinueProcess.Checked = FALSE) then
   begin
-    ADOConnection1.Execute('DELETE FROM dtaPayrollProcess WHERE Period1=' + sPeriod1);
+    ADOConnection1.Execute('DELETE FROM dtaPayrollProcess WHERE Period1=' + sPeriod2);
   end;
 
   Process_Stage3;
@@ -489,7 +489,7 @@ begin
     ADODataSet1.CommandText := 'SELECT * FROM dtaEmployees (nolock) WHERE Emp_status = ''ACTIVE'' '+
       'AND ProcessIncluded = 1 ' +
 //      'AND employee_pin = 2330200 ' +
-//      'AND employee_pin = 2330558 ' +
+//      'AND employee_pin = 2330489 ' +
       'ORDER BY EMPLOYEE_NAME';
   end;
 
@@ -652,7 +652,7 @@ begin
 
         // Extraction information from dtaOther_Earn_Ded //
         ADODataSet2.CommandText := 'SELECT * FROM dtaOther_Earn_Ded (nolock) WHERE Employee_PIN = ' + ADODataSet1.FieldByName('Employee_PIN').AsString +
-          ' AND Payroll_Period =' + sPeriod1;
+          ' AND Payroll_Period =' + sPeriod2;
         ADODataSet2.Open;
         if( ADODataSet2.RecordCount > 0 ) then
         begin
@@ -1281,8 +1281,7 @@ begin
         // add 4th other earnings before tax
         vGross_Pay := vGross_Pay + vOther_Earn4;
 
-        vGross_Pay := vGross_Pay + ( vOther_Ded1 + vOther_Ded2);
-        //vGross_Pay := vGross_Pay + ( vOther_Ded1 + vOther_Ded2 + vOther_Ded3 );
+        vGross_Pay := vGross_Pay + ( vOther_Ded1 + vOther_Ded2 + vOther_Ded3 );
 
         // deduct from basic pay to get net basic and get sss ee/er and tier 1 ee/er
         vNetBasic := vBasic_Pay1 + vOther_Earn1;
@@ -1293,7 +1292,7 @@ begin
           'ISNULL(Bonus_PerfectAttendance,0) AS Bonus_PerfectAttendance, ISNULL(Remarks,'''') AS Remarks, ' +
           'ISNULL(Bonus_Others,0) AS Bonus_Others, ISNULL(Bonus_Training,0) AS Bonus_Training, ISNULL(Bonus_FreeField1,0) AS Bonus_FreeField1 ';
         SQL := SQL + 'FROM dtaBonusesDetails ';
-        SQL := SQL + 'WHERE Period1 = ' + sPeriod1 + ' ';
+        SQL := SQL + 'WHERE Period1 = ' + sPeriod2 + ' ';
         SQL := SQL + 'AND Deleted = 0 ';
         SQL := SQL + 'AND Employee_PIN = ''' + ADODataSet1.FieldByName('Employee_PIN').AsString + '''';
 
@@ -1667,9 +1666,6 @@ begin
         // get net pay
         vNet_Pay := (vGross_Pay + vOther_EarnAfterTax1 + vOther_EarnAfterTax2) - vTotal_Ded;
 
-        // add vOther_Ded3 (after tax)
-        vNet_Pay := vNet_Pay + vOther_Ded3;
-
         //get project code - 05/28/08
         sProj := getProjectCode(ADODataSet1.FieldByName('primary_task_id').AsString);
 
@@ -1777,7 +1773,7 @@ begin
             ' ) ' +
 
           'VALUES ' +
-            '('+sPeriod1+', '+sPeriod2+', '+ADODataSet1.FieldByName('Employee_PIN').AsString+', '+
+            '('+sPeriod2+', '+sPeriod2+', '+ADODataSet1.FieldByName('Employee_PIN').AsString+', '+
               CurrToStr(vDocs)+', '+CurrToStr(vTime_Taken)+', '+CurrToStr(vIdle_Time)+', '+CurrToStr(vOver_Time)+', ' +
               CurrToStr(v99_Time)+', '+CurrToStr(vOT_Pay)+', '+CurrToStr(vBonus_Pay)+', '+
               CurrToStr(vTotal)+', '+CurrToStr(vEarned_Pay)+', '+CurrToStr(vUnearned_Pay)+', '+
@@ -1836,9 +1832,9 @@ begin
            }
       end;
 
-      {vUpdateTracking := 'UPDATE dtaTracking SET Process_Num = ''Process 3'', Keyer_ID = ''' +
+      vUpdateTracking := 'UPDATE dtaTracking SET Process_Num = ''Process 3'', Keyer_ID = ''' +
         ADODataSet1.FieldByName('Employee_Name').AsString + '''';
-      ADOConnection1.Execute(vUpdateTracking); }
+      ADOConnection1.Execute(vUpdateTracking);
 
     ADODataSet1.Next;
   until ADODataSet1.Eof;

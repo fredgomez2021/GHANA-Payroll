@@ -134,7 +134,7 @@ begin
 
     ADODATASET1.Close;
     ADODATASET1.Connection := ADOCONNECTION1;
-    ADODATASET1.CommandText := 'Select distinct period1 from dtaPayrollProcess where Period1='+sPeriod1;
+    ADODATASET1.CommandText := 'Select distinct period1 from dtaPayrollProcess where Period1='+sPeriod2;
     ADODATASET1.Open;
     I := ADODataSet1.RecordCount;
     ADODataSet1.Close;
@@ -211,38 +211,37 @@ begin
     row := 3;
     oSheet.Cells[row,1] := 'Employee Name';
     oSheet.Cells[row,2] := 'Department';
-    oSheet.Cells[row,3] := 'Position';
+    oSheet.Cells[row,3] := 'Job Position Code';
     oSheet.Cells[row,4] := 'Employee PIN';
     oSheet.Cells[row,5] := 'Basic Pay';
     oSheet.Cells[row,6] := 'Basic Salary Adjustment';
     oSheet.Cells[row,7] := 'Other Earnings Bef. Tax';
     oSheet.Cells[row,8] := 'Adjustment in Basic Pay';
     oSheet.Cells[row,9] := 'Other Earnings After Tax';
-    oSheet.Cells[row,10] := 'Other Deductions After Tax';
-    oSheet.Cells[row,11] := 'Bonus';
-    oSheet.Cells[row,12] := 'Commission Bonus';
-    oSheet.Cells[row,13] := 'Retention Bonus';
-    oSheet.Cells[row,14] := 'Other Bonus';
-    oSheet.Cells[row,15] := 'Ops Bonus';
+    oSheet.Cells[row,10] := 'UPH Bonus';
+    oSheet.Cells[row,11] := 'Quality Bonus';
+    oSheet.Cells[row,12] := 'Retention Bonus';
+    oSheet.Cells[row,13] := 'Other Bonus';
+    oSheet.Cells[row,14] := 'FreeField Bonus';
 
-    oSheet.Cells[row,16] := 'Gross Pay';
-    oSheet.Cells[row,17] := 'With Tax';
-    oSheet.Cells[row,18] := 'Total Ded';
-    oSheet.Cells[row,19] := 'Net Pay';
-    oSheet.Cells[row,20] := 'SSS EE';
-    oSheet.Cells[row,21] := 'SSS ER';
-    oSheet.Cells[row,22] := 'TIER EE';
-    oSheet.Cells[row,23] := 'TIER ER';
-    oSheet.Cells[row,24] := 'Total Payroll Expense';
-    oSheet.Cells[row,25] := 'Hire Date Grouping';
+    oSheet.Cells[row,15] := 'Gross Pay';
+    oSheet.Cells[row,16] := 'With Tax';
+    oSheet.Cells[row,17] := 'Total Ded';
+    oSheet.Cells[row,18] := 'Net Pay';
+    oSheet.Cells[row,19] := 'SSS EE';
+    oSheet.Cells[row,20] := 'SSS ER';
+    oSheet.Cells[row,21] := 'TIER EE';
+    oSheet.Cells[row,22] := 'TIER ER';
+    oSheet.Cells[row,23] := 'Total Payroll Expense';
+    oSheet.Cells[row,24] := 'Hire Date Grouping';
 
-    oSheet.Cells[row,26] := 'Email';
-    oSheet.Cells[row,27] := 'GH Card No.';
+    oSheet.Cells[row,25] := 'Email';
+    oSheet.Cells[row,26] := 'GH Card No.';
 
-    oSheet.Cells[row,28] := 'Account Number';
-    oSheet.Cells[row,29] := 'Name on Account';
-    oSheet.Cells[row,30] := 'Bank Name';
-    oSheet.Cells[row,31] := 'Bank Branch';
+    oSheet.Cells[row,27] := 'Account Number';
+    oSheet.Cells[row,28] := 'Name on Account';
+    oSheet.Cells[row,29] := 'Bank Name';
+    oSheet.Cells[row,30] := 'Bank Branch';
 
     row := 4;
 
@@ -260,7 +259,7 @@ begin
 
       // get employee email
       ADODataSet2.Close;
-      ADODataSet2.CommandText := 'SELECT ISNULL(EmailAdd1,'''') AS EmpEmail, Date_Hired, GhCardNumber, ATM_Number, NameOnAccount, BankName, BankBranch ' +
+      ADODataSet2.CommandText := 'SELECT ISNULL(EmailAdd1,'''') AS EmpEmail, Date_Hired, GhCardNumber ' +
         'FROM dtaEmployees ' +
         'WHERE Emp_Status = ''ACTIVE'' ' +
         'AND ProcessIncluded = 1 ' +
@@ -376,11 +375,11 @@ begin
     // payroll period cut off header
     oSheet.Range['A1:B1'].Font.Bold := true;
     // header
-    oSheet.Range['A3:AE3'].Font.Bold := true;
+    oSheet.Range['A3:Z3'].Font.Bold := true;
     // total amount
     oSheet.Range['E'+IntToStr(row+1)+':W'+IntToStr(row+1)].Font.Bold := true;
     // all columns
-    oSheet.Columns['A:AE'].AutoFit;
+    oSheet.Columns['A:Z'].AutoFit;
 
     // set background color to green
     // total payroll expense

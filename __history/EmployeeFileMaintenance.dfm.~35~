@@ -798,7 +798,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
     Top = 529
     Width = 135
     Height = 25
-    Caption = 'Employee Lists'
+    Caption = 'Employee lists'
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -11

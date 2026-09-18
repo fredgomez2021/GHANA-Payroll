@@ -489,7 +489,7 @@ begin
     ADODataSet1.CommandText := 'SELECT * FROM dtaEmployees (nolock) WHERE Emp_status = ''ACTIVE'' '+
       'AND ProcessIncluded = 1 ' +
 //      'AND employee_pin = 2330200 ' +
-//      'AND employee_pin = 2330558 ' +
+//      'AND employee_pin = 2330484 ' +
       'ORDER BY EMPLOYEE_NAME';
   end;
 
@@ -1281,8 +1281,7 @@ begin
         // add 4th other earnings before tax
         vGross_Pay := vGross_Pay + vOther_Earn4;
 
-        vGross_Pay := vGross_Pay + ( vOther_Ded1 + vOther_Ded2);
-        //vGross_Pay := vGross_Pay + ( vOther_Ded1 + vOther_Ded2 + vOther_Ded3 );
+        vGross_Pay := vGross_Pay + ( vOther_Ded1 + vOther_Ded2 + vOther_Ded3 );
 
         // deduct from basic pay to get net basic and get sss ee/er and tier 1 ee/er
         vNetBasic := vBasic_Pay1 + vOther_Earn1;
@@ -1666,9 +1665,6 @@ begin
 
         // get net pay
         vNet_Pay := (vGross_Pay + vOther_EarnAfterTax1 + vOther_EarnAfterTax2) - vTotal_Ded;
-
-        // add vOther_Ded3 (after tax)
-        vNet_Pay := vNet_Pay + vOther_Ded3;
 
         //get project code - 05/28/08
         sProj := getProjectCode(ADODataSet1.FieldByName('primary_task_id').AsString);

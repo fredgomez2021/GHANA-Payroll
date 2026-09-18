@@ -134,7 +134,7 @@ begin
 
     ADODATASET1.Close;
     ADODATASET1.Connection := ADOCONNECTION1;
-    ADODATASET1.CommandText := 'Select distinct period1 from dtaPayrollProcess where Period1='+sPeriod1;
+    ADODATASET1.CommandText := 'Select distinct period1 from dtaPayrollProcess where Period1='+sPeriod2;
     ADODATASET1.Open;
     I := ADODataSet1.RecordCount;
     ADODataSet1.Close;
@@ -211,7 +211,7 @@ begin
     row := 3;
     oSheet.Cells[row,1] := 'Employee Name';
     oSheet.Cells[row,2] := 'Department';
-    oSheet.Cells[row,3] := 'Position';
+    oSheet.Cells[row,3] := 'Job Position Code';
     oSheet.Cells[row,4] := 'Employee PIN';
     oSheet.Cells[row,5] := 'Basic Pay';
     oSheet.Cells[row,6] := 'Basic Salary Adjustment';
@@ -223,7 +223,7 @@ begin
     oSheet.Cells[row,12] := 'Commission Bonus';
     oSheet.Cells[row,13] := 'Retention Bonus';
     oSheet.Cells[row,14] := 'Other Bonus';
-    oSheet.Cells[row,15] := 'Ops Bonus';
+    oSheet.Cells[row,15] := 'Leadership Bonus';
 
     oSheet.Cells[row,16] := 'Gross Pay';
     oSheet.Cells[row,17] := 'With Tax';

@@ -3,8 +3,8 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
   Top = 0
   BorderStyle = bsToolWindow
   Caption = 'Employee File Maintenance'
-  ClientHeight = 561
-  ClientWidth = 571
+  ClientHeight = 491
+  ClientWidth = 570
   Color = clSkyBlue
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -25,7 +25,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
     Left = 8
     Top = 76
     Width = 553
-    Height = 445
+    Height = 373
     Caption = 'EMPLOYEE DETAILS'
     Color = clCream
     Font.Charset = ANSI_CHARSET
@@ -63,8 +63,8 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       ParentFont = False
     end
     object Label4: TLabel
-      Left = 352
-      Top = 183
+      Left = 118
+      Top = 210
       Width = 42
       Height = 16
       Caption = 'Status:'
@@ -89,11 +89,11 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       ParentFont = False
     end
     object Label6: TLabel
-      Left = 89
+      Left = 43
       Top = 105
-      Width = 71
+      Width = 116
       Height = 16
-      Caption = 'Department:'
+      Caption = 'Project/Department:'
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -13
@@ -102,11 +102,11 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       ParentFont = False
     end
     object Label8: TLabel
-      Left = 55
-      Top = 309
-      Width = 101
+      Left = 28
+      Top = 238
+      Width = 130
       Height = 16
-      Caption = 'Account Number:'
+      Caption = 'ATM Account Number:'
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -13
@@ -115,8 +115,8 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       ParentFont = False
     end
     object Label10: TLabel
-      Left = 75
-      Top = 183
+      Left = 315
+      Top = 185
       Width = 81
       Height = 16
       Caption = 'Monthly Rate:'
@@ -128,8 +128,8 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       ParentFont = False
     end
     object Label11: TLabel
-      Left = 611
-      Top = 177
+      Left = 75
+      Top = 185
       Width = 84
       Height = 16
       Caption = 'Rate per Hour:'
@@ -141,8 +141,8 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       ParentFont = False
     end
     object Label15: TLabel
-      Left = 93
-      Top = 156
+      Left = 95
+      Top = 154
       Width = 65
       Height = 16
       Caption = 'Date Hired:'
@@ -167,8 +167,8 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       ParentFont = False
     end
     object Label3: TLabel
-      Left = 119
-      Top = 273
+      Left = 121
+      Top = 288
       Width = 37
       Height = 16
       Caption = 'Email:'
@@ -181,7 +181,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
     end
     object Label18: TLabel
       Left = 307
-      Top = 157
+      Top = 154
       Width = 89
       Height = 16
       Caption = 'Date Resigned:'
@@ -194,11 +194,11 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Visible = False
     end
     object Label19: TLabel
-      Left = 97
-      Top = 246
-      Width = 58
+      Left = 107
+      Top = 342
+      Width = 47
       Height = 16
-      Caption = 'Tier 3 EE:'
+      Caption = 'SS Tier:'
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -13
@@ -207,76 +207,11 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       ParentFont = False
     end
     object Label20: TLabel
-      Left = 592
-      Top = 231
+      Left = 48
+      Top = 263
       Width = 110
       Height = 16
       Caption = 'ATM Card Number:'
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-    end
-    object Label7: TLabel
-      Left = 321
-      Top = 246
-      Width = 58
-      Height = 16
-      Caption = 'Tier 3 ER:'
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-    end
-    object Label9: TLabel
-      Left = 54
-      Top = 219
-      Width = 103
-      Height = 16
-      Caption = 'GH Card Number:'
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-    end
-    object Label17: TLabel
-      Left = 48
-      Top = 333
-      Width = 107
-      Height = 16
-      Caption = 'Name on Account:'
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-    end
-    object Label21: TLabel
-      Left = 83
-      Top = 357
-      Width = 72
-      Height = 16
-      Caption = 'Bank Name:'
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-    end
-    object Label22: TLabel
-      Left = 77
-      Top = 381
-      Width = 79
-      Height = 16
-      Caption = 'Bank Branch:'
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -13
@@ -312,17 +247,18 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       TabOrder = 1
     end
     object txtATMNumber: TEdit
-      Left = 159
-      Top = 305
+      Left = 162
+      Top = 234
       Width = 174
       Height = 24
+      Enabled = False
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -13
       Font.Name = 'Arial'
       Font.Style = []
       ParentFont = False
-      TabOrder = 10
+      TabOrder = 5
     end
     object cmbPrimary_Task_ID: TComboBox
       Left = 162
@@ -336,7 +272,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Style = []
       ItemHeight = 16
       ParentFont = False
-      TabOrder = 3
+      TabOrder = 6
       Items.Strings = (
         'Incentive Compensation Rate'
         'Base Pay'
@@ -354,11 +290,11 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Style = []
       ItemHeight = 16
       ParentFont = False
-      TabOrder = 4
+      TabOrder = 2
     end
     object txtMonthlyRate: TEdit
-      Left = 161
-      Top = 180
+      Left = 400
+      Top = 182
       Width = 123
       Height = 24
       Font.Charset = ANSI_CHARSET
@@ -367,7 +303,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Name = 'Arial'
       Font.Style = []
       ParentFont = False
-      TabOrder = 8
+      TabOrder = 3
       Text = '0.00'
       OnChange = txtMonthlyRateChange
     end
@@ -383,12 +319,12 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Name = 'Arial'
       Font.Style = [fsBold]
       ParentFont = False
-      TabOrder = 20
+      TabOrder = 8
       OnClick = cmdViewListClick
     end
     object txtRate_Hour: TEdit
-      Left = 610
-      Top = 198
+      Left = 162
+      Top = 182
       Width = 126
       Height = 24
       Font.Charset = ANSI_CHARSET
@@ -397,13 +333,13 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Name = 'Arial'
       Font.Style = []
       ParentFont = False
-      TabOrder = 7
+      TabOrder = 4
       Text = '0.00'
       OnChange = txtMonthlyRateChange
     end
     object cmbEmp_Status: TComboBox
-      Left = 396
-      Top = 180
+      Left = 162
+      Top = 207
       Width = 127
       Height = 24
       Font.Charset = ANSI_CHARSET
@@ -413,11 +349,11 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Style = []
       ItemHeight = 16
       ParentFont = False
-      TabOrder = 9
+      TabOrder = 7
     end
     object dtpDate_Hired: TDateTimePicker
       Left = 162
-      Top = 153
+      Top = 150
       Width = 125
       Height = 24
       Date = 38730.954092893520000000
@@ -428,7 +364,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Name = 'Arial'
       Font.Style = []
       ParentFont = False
-      TabOrder = 5
+      TabOrder = 9
     end
     object cmbEmp_Loc: TComboBox
       Left = 162
@@ -442,40 +378,38 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Style = []
       ItemHeight = 16
       ParentFont = False
-      TabOrder = 2
+      TabOrder = 10
     end
     object chkIncludeInProcess: TCheckBox
-      Left = 158
-      Top = 414
+      Left = 162
+      Top = 314
       Width = 141
       Height = 17
       HelpType = htKeyword
       HelpKeyword = 'With Night Differential?'
       Alignment = taLeftJustify
-      BiDiMode = bdRightToLeft
       Caption = 'Include in Process'
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -13
       Font.Name = 'Arial'
       Font.Style = []
-      ParentBiDiMode = False
       ParentFont = False
-      TabOrder = 13
+      TabOrder = 11
     end
     object btnAddPrimaryTask: TButton
       Left = 449
       Top = 100
       Width = 74
       Height = 23
-      Caption = 'Add Dept'
+      Caption = 'Add Project'
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -11
       Font.Name = 'Arial'
       Font.Style = []
       ParentFont = False
-      TabOrder = 21
+      TabOrder = 12
       OnClick = btnAddPrimaryTaskClick
     end
     object btnAddPosition: TButton
@@ -490,7 +424,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Name = 'Arial'
       Font.Style = []
       ParentFont = False
-      TabOrder = 22
+      TabOrder = 13
       OnClick = btnAddPositionClick
     end
     object btnAddLocation: TButton
@@ -505,12 +439,12 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Name = 'Arial'
       Font.Style = []
       ParentFont = False
-      TabOrder = 23
+      TabOrder = 14
       OnClick = btnAddLocationClick
     end
     object txtEmail: TEdit
-      Left = 160
-      Top = 270
+      Left = 162
+      Top = 285
       Width = 362
       Height = 24
       Font.Charset = ANSI_CHARSET
@@ -519,11 +453,11 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Name = 'Arial'
       Font.Style = []
       ParentFont = False
-      TabOrder = 12
+      TabOrder = 15
     end
     object dtpDate_Resigned: TDateTimePicker
-      Left = 398
-      Top = 153
+      Left = 401
+      Top = 150
       Width = 125
       Height = 24
       Date = 38730.954092893520000000
@@ -534,69 +468,13 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Name = 'Arial'
       Font.Style = []
       ParentFont = False
-      TabOrder = 6
+      TabOrder = 16
       Visible = False
     end
     object txtMP2EmpShare: TEdit
-      Left = 160
-      Top = 243
-      Width = 143
-      Height = 24
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-      TabOrder = 14
-      Text = '0.00'
-      OnChange = txtMonthlyRateChange
-    end
-    object txtATMCardNumber: TEdit
-      Left = 594
-      Top = 252
-      Width = 174
-      Height = 24
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-      TabOrder = 11
-    end
-    object txtMP2EmployerShare: TEdit
-      Left = 382
-      Top = 243
-      Width = 137
-      Height = 24
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-      TabOrder = 15
-      Text = '0.00'
-      OnChange = txtMonthlyRateChange
-    end
-    object txtGHCardNumber: TEdit
-      Left = 160
-      Top = 216
-      Width = 359
-      Height = 24
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-      TabOrder = 16
-    end
-    object txtNameOnAccount: TEdit
-      Left = 159
-      Top = 330
-      Width = 361
+      Left = 162
+      Top = 339
+      Width = 127
       Height = 24
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
@@ -605,12 +483,15 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       Font.Style = []
       ParentFont = False
       TabOrder = 17
+      Text = '0.00'
+      OnChange = txtMonthlyRateChange
     end
-    object txtBankName: TEdit
-      Left = 159
-      Top = 354
-      Width = 361
+    object txtATMCardNumber: TEdit
+      Left = 162
+      Top = 260
+      Width = 174
       Height = 24
+      Enabled = False
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -13
@@ -619,23 +500,10 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
       ParentFont = False
       TabOrder = 18
     end
-    object txtBankBranch: TEdit
-      Left = 159
-      Top = 378
-      Width = 361
-      Height = 24
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Arial'
-      Font.Style = []
-      ParentFont = False
-      TabOrder = 19
-    end
   end
   object cmdDelete: TButton
     Left = 160
-    Top = 530
+    Top = 459
     Width = 75
     Height = 25
     Caption = '&DELETE'
@@ -651,7 +519,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
   end
   object cmdEdit: TButton
     Left = 84
-    Top = 530
+    Top = 459
     Width = 76
     Height = 25
     Caption = '&EDIT'
@@ -667,7 +535,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
   end
   object cmdAdd: TButton
     Left = 9
-    Top = 530
+    Top = 459
     Width = 75
     Height = 25
     Caption = '&ADD'
@@ -780,7 +648,7 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
   end
   object cmdClose: TButton
     Left = 235
-    Top = 530
+    Top = 459
     Width = 75
     Height = 25
     Caption = '&CANCEL'
@@ -795,10 +663,10 @@ object frmEmployeeFileMaintenance: TfrmEmployeeFileMaintenance
   end
   object btnEmployeeList: TButton
     Left = 425
-    Top = 529
+    Top = 458
     Width = 135
     Height = 25
-    Caption = 'Employee Lists'
+    Caption = 'Employee lists'
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
     Font.Height = -11
